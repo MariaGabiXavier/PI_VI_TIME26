@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -32,15 +31,11 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.PersonOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -53,11 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+import com.example.flowcampus.ui.components.BottomNavigation
 
 @Composable
 fun MainScaffold(
@@ -156,7 +154,7 @@ fun HomeContent(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(androidx.compose.ui.graphics.Color(0xFFD9DEE8)),
+                        .background(Color(0xFFD9DEE8)),
                     contentAlignment = Alignment.Center
                 ) {
 
@@ -268,7 +266,7 @@ fun SearchBar(
             .fillMaxWidth()
             .height(45.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(androidx.compose.ui.graphics.Color.White)
+            .background(Color.White)
             .padding(horizontal = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -276,7 +274,7 @@ fun SearchBar(
         Icon(
             imageVector = Icons.Default.Search,
             contentDescription = "Pesquisar",
-            tint = androidx.compose.ui.graphics.Color(0xFF9DA5BA),
+            tint = Color(0xFF9DA5BA),
             modifier = Modifier.size(20.dp)
         )
 
@@ -302,7 +300,7 @@ fun SearchBar(
 
                     Text(
                         text = "Pesquisar refeitório, biblioteca, laboratório",
-                        color = androidx.compose.ui.graphics.Color(0xFFA4AABD),
+                        color = Color(0xFFA4AABD),
                         fontSize = 11.sp
                     )
                 }
@@ -341,7 +339,7 @@ fun CampusStatusCard(
         shape = RoundedCornerShape(16.dp),
 
         colors = CardDefaults.cardColors(
-            containerColor = androidx.compose.ui.graphics.Color.White
+            containerColor = Color.White
         ),
 
         elevation = CardDefaults.cardElevation(
@@ -364,7 +362,7 @@ fun CampusStatusCard(
                     modifier = Modifier
                         .size(31.dp)
                         .clip(RoundedCornerShape(9.dp))
-                        .background(androidx.compose.ui.graphics.Color(0xFFF3F7FD)),
+                        .background(Color(0xFFF3F7FD)),
                     contentAlignment = Alignment.Center
                 ) {
 
@@ -417,7 +415,7 @@ fun CampusStatusCard(
                 Icon(
                     imageVector = Icons.Default.AccessTime,
                     contentDescription = null,
-                    tint = androidx.compose.ui.graphics.Color(0xFF8C93A7),
+                    tint = Color(0xFF8C93A7),
                     modifier = Modifier.size(13.dp)
                 )
 
@@ -452,9 +450,9 @@ fun CampusStatusCard(
                         contentDescription = "Favorito",
 
                         tint = if (isFavorite) {
-                            androidx.compose.ui.graphics.Color(0xFFEF3F45)
+                            Color(0xFFEF3F45)
                         } else {
-                            androidx.compose.ui.graphics.Color(0xFFA8AEC0)
+                            Color(0xFFA8AEC0)
                         },
 
                         modifier = Modifier.size(19.dp)
@@ -470,8 +468,8 @@ fun StatusBadge(
     status: String
 ) {
 
-    val background: androidx.compose.ui.graphics.Color
-    val textColor: androidx.compose.ui.graphics.Color
+    val background: Color
+    val textColor: Color
 
     when (status) {
 

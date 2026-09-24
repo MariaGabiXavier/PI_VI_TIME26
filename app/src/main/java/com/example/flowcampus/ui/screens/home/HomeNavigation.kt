@@ -3,7 +3,6 @@ package com.example.flowcampus.ui.screens.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -20,13 +18,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.PersonOutline
-import androidx.compose.material.icons.filled.ShowChart
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -38,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @Composable
 fun AllPlacesScreen(
@@ -150,77 +143,10 @@ fun SimpleSectionScreen(
     }
 }
 
-@Composable
-fun BottomNavigation(
-    selectedScreen: AppScreen,
-    onScreenChange: (AppScreen) -> Unit
-) {
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .windowInsetsPadding(WindowInsets.navigationBars)
-    ) {
-
-        HorizontalDivider(
-            color = BorderGray,
-            thickness = 1.dp
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(65.dp)
-                .padding(horizontal = 18.dp),
-
-            horizontalArrangement = Arrangement.SpaceAround,
-
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            BottomNavigationItem(
-                icon = Icons.Default.Home,
-                label = "Início",
-                selected = selectedScreen == AppScreen.HOME,
-                onClick = {
-                    onScreenChange(AppScreen.HOME)
-                }
-            )
-
-            BottomNavigationItem(
-                icon = Icons.Default.ShowChart,
-                label = "Análises",
-                selected = selectedScreen == AppScreen.ANALYSES,
-                onClick = {
-                    onScreenChange(AppScreen.ANALYSES)
-                }
-            )
-
-            BottomNavigationItem(
-                icon = Icons.Default.NotificationsNone,
-                label = "Alertas",
-                selected = selectedScreen == AppScreen.ALERTS,
-                onClick = {
-                    onScreenChange(AppScreen.ALERTS)
-                }
-            )
-
-            BottomNavigationItem(
-                icon = Icons.Default.PersonOutline,
-                label = "Perfil",
-                selected = selectedScreen == AppScreen.PROFILE,
-                onClick = {
-                    onScreenChange(AppScreen.PROFILE)
-                }
-            )
-        }
-    }
-}
 
 @Composable
 fun BottomNavigationItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
     selected: Boolean,
     onClick: () -> Unit

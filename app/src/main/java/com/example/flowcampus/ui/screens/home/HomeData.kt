@@ -5,8 +5,8 @@ import androidx.compose.ui.graphics.Color
 val BackgroundColor = Color(0xFFF5F7FB)
 val Blue = Color(0xFF0878F9)
 val DarkText = Color(0xFF202336)
-val GrayText = Color(0xFF7A7F96)
-val BorderGray = Color(0xFFE5E8EF)
+val GrayText = Color(0xFF636477)
+val BorderGray = Color(0xFF8D929B)
 
 val HighRed = Color(0xFFFFE9E9)
 val HighRedText = Color(0xFFE74C4C)
