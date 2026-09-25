@@ -1,21 +1,28 @@
 package com.example.flowcampus.ui.screens.home
 
 import androidx.compose.ui.graphics.Color
+import com.example.flowcampus.ui.theme.AppAmber
+import com.example.flowcampus.ui.theme.AppBackground
+import com.example.flowcampus.ui.theme.AppBlue
+import com.example.flowcampus.ui.theme.AppGrayText
+import com.example.flowcampus.ui.theme.AppGreen
+import com.example.flowcampus.ui.theme.AppNavy
+import com.example.flowcampus.ui.theme.AppRed
 
-val BackgroundColor = Color(0xFFF5F7FB)
-val Blue = Color(0xFF0878F9)
-val DarkText = Color(0xFF202336)
-val GrayText = Color(0xFF636477)
+val BackgroundColor = AppBackground
+val Blue = AppBlue
+val DarkText = AppNavy
+val GrayText = AppGrayText
 val BorderGray = Color(0xFF8D929B)
 
 val HighRed = Color(0xFFFFE9E9)
-val HighRedText = Color(0xFFE74C4C)
+val HighRedText = AppRed
 
 val MediumOrange = Color(0xFFFFF2DD)
-val MediumOrangeText = Color(0xFFE99520)
+val MediumOrangeText = AppAmber
 
 val LowGreen = Color(0xFFE4F8EC)
-val LowGreenText = Color(0xFF16A05D)
+val LowGreenText = AppGreen
 
 data class CampusPlace(
     val name: String,

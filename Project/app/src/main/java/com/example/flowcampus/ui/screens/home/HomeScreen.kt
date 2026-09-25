@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
+import com.example.flowcampus.ui.screens.analytics.AnalyticsScreen
 
 @Composable
 fun HomeScreen() {
@@ -107,10 +108,7 @@ fun HomeScreen() {
                 }
             ) {
 
-                SimpleSectionScreen(
-                    title = "Análises",
-                    description = "Aqui ficarão as análises e informações sobre o campus."
-                )
+                AnalyticsScreen()
             }
         }
 
