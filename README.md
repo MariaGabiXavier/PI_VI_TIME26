@@ -1,4 +1,4 @@
-# 🏫 FlowCampus
+# FlowCampus
 
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=4F46E5&height=120&section=header&text=FlowCampus&fontSize=40&fontColor=ffffff&animation=fadeIn" />
@@ -10,7 +10,7 @@
 
 ---
 
-## 📌 Sobre o projeto
+##Sobre o projeto
 
 O **FlowCampus** é uma aplicação inteligente desenvolvida para auxiliar estudantes, professores e colaboradores a acompanharem a **lotação de ambientes do campus**.
 
@@ -20,62 +20,61 @@ A proposta é permitir que os usuários consultem a situação dos espaços e es
 
 ---
 
-## 🎯 Objetivo
+##Objetivo
 
 Desenvolver uma solução capaz de:
 
-* 👥 Monitorar a quantidade de pessoas nos ambientes;
-* 📊 Indicar o nível de lotação;
-* ⏱️ Exibir estimativas de espera;
-* 📈 Armazenar e consultar o histórico de ocupação;
-* 🤖 Identificar padrões de movimento;
-* 🔮 Prever períodos de maior lotação.
+*  Monitorar a quantidade de pessoas nos ambientes;
+*  Indicar o nível de lotação;
+*  Exibir estimativas de espera;
+*  Armazenar e consultar o histórico de ocupação;
+*  Identificar padrões de movimento;
+*  Prever períodos de maior lotação.
 
 ---
 
-## ⚙️ Como funciona
+##  Como funciona
 
 ```text
-        📷 Câmeras / Dados simulados
+         Câmeras / Dados simulados
                   │
                   ▼
-        👁️ Visão Computacional
+         Visão Computacional
                   │
                   ▼
-          👥 Contagem de pessoas
+           Contagem de pessoas
                   │
                   ▼
-             🗄️ Backend
+              Backend
                   │
                   ▼
-             📊 Banco de Dados
+              Banco de Dados
                   │
           ┌───────┴───────┐
           ▼               ▼
-    📱 Aplicativo     🤖 Inteligência
-                           Artificial
+     Aplicativo     Inteligência Artificial
                               │
                               ▼
-                       🔮 Previsões
+                           Previsões
 ```
 
 ---
 
-## ✨ Funcionalidades
+##  Funcionalidades
 
-* 🔐 Cadastro e autenticação de usuários;
-* 🏫 Cadastro e gerenciamento de ambientes;
-* 👥 Contagem aproximada de pessoas;
-* 🟢🟡🔴 Classificação da lotação: baixa, média ou alta;
-* 🔄 Atualização periódica dos dados;
-* 📊 Consulta da ocupação atual;
-* 📈 Histórico de ocupação;
-* 🤖 Análise de padrões;
-* 🔮 Previsão de períodos de maior lotação.
+*  Cadastro e autenticação de usuários;
+*  Cadastro e gerenciamento de ambientes;
+*  Contagem aproximada de pessoas;
+*  Classificação da lotação: baixa, média ou alta;
+*  Atualização periódica dos dados;
+*  Consulta da ocupação atual;
+*  Histórico de ocupação;
+*  Análise de padrões;
+*  Previsão de períodos de maior lotação.
 
 ---
 
-## 🎨 Protótipo
+##  Protótipo
 
 O protótipo da aplicação foi desenvolvido no Figma:
 
@@ -83,22 +82,22 @@ O protótipo da aplicação foi desenvolvido no Figma:
 
 ---
 
-## 🛠️ Tecnologias
+##  Tecnologias
 
 O projeto utiliza conceitos e tecnologias relacionados a:
 
-* 📱 Desenvolvimento de aplicações mobile;
-* 🌐 Backend e APIs;
-* 🗄️ Banco de dados;
-* 👁️ Visão Computacional;
-* 🤖 Inteligência Artificial e Machine Learning;
-* 📷 Câmeras e dispositivos conectados.
+*  Desenvolvimento de aplicações mobile;
+*  Backend e APIs;
+*  Banco de dados;
+*  Visão Computacional;
+*  Inteligência Artificial e Machine Learning;
+*  Câmeras e dispositivos conectados.
 
 > As tecnologias específicas de implementação ainda estão sendo definidas no desenvolvimento do projeto.
 
 ---
 
-## 🔄 Metodologia
+##  Metodologia
 
 O desenvolvimento do FlowCampus segue a metodologia **Scrum**, com evolução incremental através de Sprints.
 
@@ -114,7 +113,7 @@ As etapas contemplam:
 
 ---
 
-## 👥 Equipe
+##  Equipe
 
 | Integrante                        |
 | --------------------------------- |
