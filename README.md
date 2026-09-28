@@ -1,5 +1,4 @@
-# FlowCampus
-
+## 
 <p align="center">
   <img src="https://capsule-render.vercel.app/api?type=waving&color=4F46E5&height=120&section=header&text=FlowCampus&fontSize=40&fontColor=ffffff&animation=fadeIn" />
 </p>
@@ -10,7 +9,7 @@
 
 ---
 
-##Sobre o projeto
+##  Sobre o projeto
 
 O **FlowCampus** é uma aplicação inteligente desenvolvida para auxiliar estudantes, professores e colaboradores a acompanharem a **lotação de ambientes do campus**.
 
@@ -20,7 +19,7 @@ A proposta é permitir que os usuários consultem a situação dos espaços e es
 
 ---
 
-##Objetivo
+##  Objeyivo
 
 Desenvolver uma solução capaz de:
 
