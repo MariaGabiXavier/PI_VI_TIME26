@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.flowcampus"
-        minSdk = 33
+        minSdk = 24 /*33*/
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
