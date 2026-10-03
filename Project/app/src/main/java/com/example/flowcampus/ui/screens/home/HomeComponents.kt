@@ -41,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 import com.example.flowcampus.ui.components.BottomNavigation
+import com.example.flowcampus.ui.screens.auth.AuthSession
 
 @Composable
 fun MainScaffold(
@@ -96,6 +98,9 @@ fun HomeContent(
     onPlaceClick: (CampusPlace) -> Unit,
     onSeeAllClick: () -> Unit
 ) {
+
+    // Usuário logado (preenchido no login/cadastro ou no login automático)
+    val user by AuthSession.user.collectAsState()
 
     var searchText by remember {
         mutableStateOf("")
@@ -143,12 +148,18 @@ fun HomeContent(
                     )
 
                     Text(
-                        text = "Alex Mercer",
+                        text = user?.name ?: "Visitante",
                         color = DarkText,
                         fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(
+                    modifier = Modifier.width(12.dp)
+                )
 
                 Box(
                     modifier = Modifier
@@ -159,7 +170,7 @@ fun HomeContent(
                 ) {
 
                     Text(
-                        text = "AM",
+                        text = user?.initials ?: "?",
                         color = DarkText,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold

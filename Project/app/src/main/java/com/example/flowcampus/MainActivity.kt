@@ -6,10 +6,15 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.flowcampus.ui.screens.auth.FirebaseAuthRepository
+import com.example.flowcampus.ui.screens.auth.LoginScreen
+import com.example.flowcampus.ui.screens.auth.RegisterScreen
 import com.example.flowcampus.ui.screens.home.HomeScreen
 import com.example.flowcampus.ui.screens.onboarding.FlowCampusOnboarding
 import com.example.flowcampus.ui.theme.FlowCampusTheme
@@ -18,33 +23,70 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            FlowCampusTheme { // Substitua pelo seu tema gerado
+            FlowCampusTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // 1. Cria o controlador de rotas
                     val navController = rememberNavController()
+                    val authRepository = remember { FirebaseAuthRepository() }
 
-                    // 2. Define o Onboarding como a tela inicial (startDestination)
-                    NavHost(navController = navController, startDestination = "onboarding") {
+                    // Já existe sessão salva? Vai direto para a Home.
+                    val startDestination = remember {
+                        if (authRepository.isLoggedIn()) "home" else "onboarding"
+                    }
 
-                        // Rota do Onboarding
+                    // Com sessão salva, busca o perfil no Firestore em segundo plano
+                    LaunchedEffect(Unit) {
+                        if (authRepository.isLoggedIn()) {
+                            authRepository.loadCurrentUser()
+                        }
+                    }
+
+                    NavHost(navController = navController, startDestination = startDestination) {
+
                         composable("onboarding") {
                             FlowCampusOnboarding(
                                 onFinish = {
-                                    // 3. Redireciona para a Home ao clicar em "Começar"
-                                    navController.navigate("home") {
-                                        // 4. Remove o Onboarding do histórico para o usuário não voltar a ele clicando em 'Voltar'
+                                    navController.navigate("login") {
                                         popUpTo("onboarding") { inclusive = true }
                                     }
                                 }
                             )
                         }
 
-                        // Rota da Home (a sua tela principal)
+                        composable("login") {
+                            LoginScreen(
+                                repository = authRepository,
+                                onLoginSuccess = {
+                                    navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToRegister = {
+                                    navController.navigate("register")
+                                }
+                            )
+                        }
+
+                        composable("register") {
+                            RegisterScreen(
+                                repository = authRepository,
+                                onRegisterSuccess = {
+                                    navController.navigate("home") {
+                                        popUpTo("login") { inclusive = true }
+                                    }
+                                },
+                                onNavigateToLogin = {
+                                    navController.popBackStack()
+                                },
+                                onBack = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
                         composable("home") {
-                            // Chama a HomeScreen que já existe no seu projeto
                             HomeScreen()
                         }
                     }
