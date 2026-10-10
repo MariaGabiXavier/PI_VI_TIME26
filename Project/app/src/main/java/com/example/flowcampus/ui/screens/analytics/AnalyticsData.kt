@@ -1,9 +1,5 @@
 package com.example.flowcampus.ui.screens.analytics
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.flowcampus.ui.theme.AppAmber
@@ -11,6 +7,9 @@ import com.example.flowcampus.ui.theme.AppBlue
 import com.example.flowcampus.ui.theme.AppGreen
 import com.example.flowcampus.ui.theme.AppNavy
 import com.example.flowcampus.ui.theme.AppRed
+import java.text.NumberFormat
+import java.util.Locale
+import kotlin.math.roundToInt
 
 val AnalyticsTrack = Color(0xFFEDEEF4)
 val AnalyticsTabBackground = Color(0xFFE7E9F2)
@@ -20,6 +19,17 @@ enum class AnalyticsPeriod {
     SEMANA,
     MES
 }
+
+/**
+ * Resumo de UM dia de UM ambiente.
+ * Vem do Firestore: coleção `daily_stats`.
+ */
+data class DailyStat(
+    val environmentName: String,
+    val totalVisitors: Long,
+    val avgOccupancyPercent: Int,
+    val avgWaitMinutes: Double
+)
 
 data class SummaryStat(
     val label: String,
@@ -43,137 +53,85 @@ data class AnalyticsInsight(
     val textAfter: String
 )
 
-fun getSummaryStats(
-    period: AnalyticsPeriod
-): List<SummaryStat> {
+// ---------------------------------------------------------------------
+// Cálculos da tela a partir dos dados do Firestore
+// ---------------------------------------------------------------------
 
-    return when (period) {
+/** Abaixo de 40% verde, de 40% a 69% âmbar, 70% ou mais vermelho. */
+fun occupancyColor(percent: Int): Color {
 
-        AnalyticsPeriod.HOJE -> listOf(
-
-            SummaryStat(
-                label = "Visitantes Totais",
-                value = "2.847",
-                valueColor = AppNavy
-            ),
-
-            SummaryStat(
-                label = "Média de Espera",
-                value = "6 min",
-                valueColor = AppBlue
-            ),
-
-            SummaryStat(
-                label = "Área mais Cheia",
-                value = "Refeitório",
-                valueColor = AppRed
-            )
-        )
-
-        AnalyticsPeriod.SEMANA -> listOf(
-
-            SummaryStat(
-                label = "Visitantes Totais",
-                value = "18.930",
-                valueColor = AppNavy
-            ),
-
-            SummaryStat(
-                label = "Média de Espera",
-                value = "8 min",
-                valueColor = AppBlue
-            ),
-
-            SummaryStat(
-                label = "Área mais Cheia",
-                value = "Refeitório",
-                valueColor = AppRed
-            )
-        )
-
-        AnalyticsPeriod.MES -> listOf(
-
-            SummaryStat(
-                label = "Visitantes Totais",
-                value = "76.210",
-                valueColor = AppNavy
-            ),
-
-            SummaryStat(
-                label = "Média de Espera",
-                value = "7 min",
-                valueColor = AppBlue
-            ),
-
-            SummaryStat(
-                label = "Área mais Cheia",
-                value = "Biblioteca",
-                valueColor = AppRed
-            )
-        )
+    return when {
+        percent >= 70 -> AppRed
+        percent >= 40 -> AppAmber
+        else -> AppGreen
     }
 }
 
-fun getAreaComparisons(
-    period: AnalyticsPeriod
+/** Ocupação média de cada ambiente no período, da mais cheia para a mais vazia. */
+fun buildAreaComparisons(
+    stats: List<DailyStat>
 ): List<AreaComparison> {
 
-    return when (period) {
+    return stats
+        .groupBy { it.environmentName }
+        .map { (name, days) ->
 
-        AnalyticsPeriod.HOJE -> listOf(
-            AreaComparison("Refeitório", 78, 100, AppRed),
-            AreaComparison("Livraria", 34, 100, AppGreen),
-            AreaComparison("Lab A2", 52, 100, AppAmber),
-            AreaComparison("Sala Estudo - 7A", 63, 100, AppAmber)
-        )
+            val average = days
+                .map { it.avgOccupancyPercent }
+                .average()
+                .roundToInt()
 
-        AnalyticsPeriod.SEMANA -> listOf(
-            AreaComparison("Refeitório", 82, 100, AppRed),
-            AreaComparison("Livraria", 41, 100, AppGreen),
-            AreaComparison("Lab A2", 47, 100, AppAmber),
-            AreaComparison("Sala Estudo - 7A", 58, 100, AppAmber)
-        )
-
-        AnalyticsPeriod.MES -> listOf(
-            AreaComparison("Refeitório", 74, 100, AppRed),
-            AreaComparison("Livraria", 39, 100, AppGreen),
-            AreaComparison("Lab A2", 55, 100, AppAmber),
-            AreaComparison("Sala Estudo - 7A", 60, 100, AppAmber)
-        )
-    }
+            AreaComparison(
+                name = name,
+                value = average,
+                maxValue = 100,
+                color = occupancyColor(average)
+            )
+        }
+        .sortedByDescending { it.value }
 }
 
-fun getInsights(
-    period: AnalyticsPeriod
-): List<AnalyticsInsight> {
+/** Os 3 cards do topo: visitantes, espera média e área mais cheia. */
+fun buildSummaryStats(
+    stats: List<DailyStat>
+): List<SummaryStat> {
+
+    val totalVisitors = stats.sumOf { it.totalVisitors }
+
+    // espera média ponderada pelo número de visitantes
+    val averageWait = if (totalVisitors > 0) {
+        stats.sumOf { it.avgWaitMinutes * it.totalVisitors } / totalVisitors
+    } else {
+        0.0
+    }
+
+    val busiestArea = buildAreaComparisons(stats)
+        .firstOrNull()
+        ?.name
+        ?: "-"
+
+    val visitorsFormat = NumberFormat.getIntegerInstance(
+        Locale.forLanguageTag("pt-BR")
+    )
 
     return listOf(
 
-        AnalyticsInsight(
-            icon = Icons.Default.MenuBook,
-            iconColor = AppBlue,
-            textBefore = "A biblioteca costuma ficar ",
-            highlight = "40% mais cheia",
-            highlightColor = AppBlue,
-            textAfter = " na terça-feira."
+        SummaryStat(
+            label = "Visitantes Totais",
+            value = visitorsFormat.format(totalVisitors),
+            valueColor = AppNavy
         ),
 
-        AnalyticsInsight(
-            icon = Icons.Default.AccessTime,
-            iconColor = AppRed,
-            textBefore = "O horário de pico do refeitório está começando ",
-            highlight = "30 min mais cedo",
-            highlightColor = AppRed,
-            textAfter = " essa semana."
+        SummaryStat(
+            label = "Média de Espera",
+            value = "${averageWait.roundToInt()} min",
+            valueColor = AppBlue
         ),
 
-        AnalyticsInsight(
-            icon = Icons.Default.Home,
-            iconColor = AppGreen,
-            textBefore = "A sala de Estudo é constantemente ",
-            highlight = "menos usada",
-            highlightColor = AppGreen,
-            textAfter = " após às 18:00."
+        SummaryStat(
+            label = "Área mais Cheia",
+            value = busiestArea,
+            valueColor = AppRed
         )
     )
 }
