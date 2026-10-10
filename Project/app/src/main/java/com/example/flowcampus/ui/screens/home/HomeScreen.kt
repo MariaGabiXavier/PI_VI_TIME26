@@ -1,72 +1,56 @@
+
 package com.example.flowcampus.ui.screens.home
 
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
 import com.example.flowcampus.ui.screens.analytics.AnalyticsScreen
+import com.example.flowcampus.ui.screens.auth.AuthSession
+import com.example.flowcampus.ui.screens.auth.UserRole
+import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onLogout: () -> Unit
+) {
+    val userProfile by AuthSession.user.collectAsState()
+    val isStaff = userProfile?.role == UserRole.STAFF
 
-    val places = listOf(
+    var showAddEnvironment by remember {
+        mutableStateOf(false)
+    }
 
-        CampusPlace(
-            name = "Refeitório",
-            people = 78,
-            minutes = 15,
-            status = "Alto",
-            iconType = PlaceIcon.RESTAURANT,
-            favorite = true
-        ),
+    val environmentRepository = remember {
+        EnvironmentRepository()
+    }
 
-        CampusPlace(
-            name = "Biblioteca",
-            people = 34,
-            minutes = 3,
-            status = "Baixo",
-            iconType = PlaceIcon.LIBRARY,
-            favorite = true
-        ),
+    var places by remember {
+        mutableStateOf<List<CampusPlace>>(emptyList())
+    }
 
-        CampusPlace(
-            name = "Ponto de ônibus",
-            people = 52,
-            minutes = 8,
-            status = "Médio",
-            iconType = PlaceIcon.BUS,
-            favorite = true
-        ),
-
-        CampusPlace(
-            name = "Lab A2",
-            people = 21,
-            minutes = 2,
-            status = "Baixo",
-            iconType = PlaceIcon.LAB,
-            favorite = false
-        ),
-
-        CampusPlace(
-            name = "Sala Estudo - 7A",
-            people = 63,
-            minutes = 10,
-            status = "Médio",
-            iconType = PlaceIcon.STUDY,
-            favorite = false
-        ),
-
-        CampusPlace(
-            name = "Sala Aula - 112",
-            people = 15,
-            minutes = 1,
-            status = "Baixo",
-            iconType = PlaceIcon.CLASSROOM,
-            favorite = false
+    DisposableEffect(environmentRepository) {
+        val listener = environmentRepository.listenEnvironments(
+            onUpdate = { updatedPlaces ->
+                places = updatedPlaces
+            },
+            onError = { error ->
+                Log.e(
+                    "HomeScreen",
+                    "Erro ao carregar ambientes do Firestore",
+                    error
+                )
+            }
         )
-    )
+
+        onDispose {
+            listener.remove()
+        }
+    }
 
     var currentScreen by remember {
         mutableStateOf(AppScreen.HOME)
@@ -79,14 +63,12 @@ fun HomeScreen() {
     when (currentScreen) {
 
         AppScreen.HOME -> {
-
             MainScaffold(
                 selectedScreen = AppScreen.HOME,
                 onScreenChange = {
                     currentScreen = it
                 }
             ) {
-
                 HomeContent(
                     places = places,
                     onPlaceClick = { place ->
@@ -100,49 +82,78 @@ fun HomeScreen() {
         }
 
         AppScreen.ANALYSES -> {
-
             MainScaffold(
                 selectedScreen = AppScreen.ANALYSES,
                 onScreenChange = {
                     currentScreen = it
                 }
             ) {
-
                 AnalyticsScreen()
             }
         }
 
         AppScreen.ALERTS -> {
-
             MainScaffold(
                 selectedScreen = AppScreen.ALERTS,
                 onScreenChange = {
                     currentScreen = it
                 }
             ) {
-
                 NotificationsScreen()
             }
         }
 
         AppScreen.PROFILE -> {
+            if (showAddEnvironment) {
+                AddEnvironmentScreen(
+                    onBack = {
+                        showAddEnvironment = false
+                    },
+                    
+                    onSave = { name, category, building, capacity, operatingHours, description ->
+                        val uid = userProfile?.uid
 
-            MainScaffold(
-                selectedScreen = AppScreen.PROFILE,
-                onScreenChange = {
-                    currentScreen = it
-                }
-            ) {
+                        if (uid.isNullOrBlank()) {
+                            Result.failure<Unit>(
+                                IllegalStateException(
+                                    "Não foi possível identificar o usuário conectado."
+                                )
+                            )
+                        } else {
+                            environmentRepository.addEnvironment(
+                                name = name,
+                                category = category,
+                                building = building,
+                                capacity = capacity,
+                                operatingHours = operatingHours,
+                                description = description,
+                                createdBy = uid
+                            )
+                        }
+                    }
 
-                SimpleSectionScreen(
-                    title = "Perfil",
-                    description = "Aqui ficarão as informações do usuário."
                 )
+            } else {
+                MainScaffold(
+                    selectedScreen = AppScreen.PROFILE,
+                    onScreenChange = {
+                        currentScreen = it
+                    }
+                ) {
+                    SimpleSectionScreen(
+                        title = "Perfil",
+                        description = "Aqui ficarão as informações do usuário.",
+                        onLogout = onLogout,
+                        isStaff = isStaff,
+                        onAddEnvironment = {
+                            showAddEnvironment = true
+                        }
+                    )
+                }
             }
         }
 
         AppScreen.ALL_PLACES -> {
-
             AllPlacesScreen(
                 places = places,
                 onBack = {
@@ -156,7 +167,6 @@ fun HomeScreen() {
     }
 
     selectedPlace?.let { place ->
-
         PlaceDetailScreen(
             place = place,
             onBack = {

@@ -87,8 +87,20 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable("home") {
-                            HomeScreen()
+                            HomeScreen(
+                                onLogout = {
+                                    authRepository.logout()
+
+                                    navController.navigate("login") {
+                                        popUpTo("home") {
+                                            inclusive = true
+                                        }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            )
                         }
+
                     }
                 }
             }

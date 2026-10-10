@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -110,7 +111,10 @@ fun AllPlacesScreen(
 @Composable
 fun SimpleSectionScreen(
     title: String,
-    description: String
+    description: String,
+    onLogout: (() -> Unit)? = null,
+    isStaff: Boolean = false,
+    onAddEnvironment: (() -> Unit)? = null
 ) {
 
     Column(
@@ -140,6 +144,31 @@ fun SimpleSectionScreen(
             color = GrayText,
             fontSize = 13.sp
         )
+
+        if (isStaff && onAddEnvironment != null) {
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = onAddEnvironment,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Adicionar ambiente")
+            }
+        }
+
+        if (onLogout != null) {
+
+            Spacer(
+                modifier = Modifier.height(28.dp)
+            )
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Sair da conta")
+            }
+        }
     }
 }
 
