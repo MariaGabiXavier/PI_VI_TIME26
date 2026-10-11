@@ -7,6 +7,7 @@ import com.example.flowcampus.ui.screens.home.LowGreen
 import com.example.flowcampus.ui.screens.home.LowGreenText
 import com.example.flowcampus.ui.screens.home.MediumOrange
 import com.example.flowcampus.ui.screens.home.MediumOrangeText
+import java.text.Normalizer
 import java.util.Date
 import java.util.concurrent.TimeUnit
 
@@ -28,6 +29,7 @@ enum class NotificationIcon {
     EMPTY_ROOM,
     FORECAST
 }
+
 enum class NotificationTone {
     RED,
     ORANGE,
@@ -45,6 +47,7 @@ data class NotificationItem(
     val description: String,
     val time: String,
     val category: NotificationCategory,
+    val environmentId: String,
     val createdAt: Date
 )
 
@@ -84,4 +87,30 @@ fun formatTimeAgo(date: Date): String {
         minutes < 48 * 60 -> "Ontem"
         else -> "${minutes / (24 * 60)} dias atrás"
     }
+}
+
+fun isVisible(notification: NotificationItem, clearedAt: Date?): Boolean {
+
+    return clearedAt == null || notification.createdAt.after(clearedAt)
+}
+
+fun isUnread(
+    notification: NotificationItem,
+    clearedAt: Date?,
+    seenAt: Date?
+): Boolean {
+
+    return isVisible(notification, clearedAt) &&
+            (seenAt == null || notification.createdAt.after(seenAt))
+}
+
+fun String.toEnvironmentId(): String {
+
+    val withoutAccents = Normalizer
+        .normalize(this.lowercase(), Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+
+    return withoutAccents
+        .replace(Regex("[^a-z0-9]+"), "-")
+        .trim('-')
 }

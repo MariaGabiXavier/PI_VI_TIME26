@@ -1,4 +1,3 @@
-
 package com.example.flowcampus.ui.screens.home
 
 import android.util.Log
@@ -13,6 +12,8 @@ import com.example.flowcampus.ui.screens.analytics.AnalyticsScreen
 import com.example.flowcampus.ui.screens.auth.AuthSession
 import com.example.flowcampus.ui.screens.auth.UserRole
 import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
+import com.example.flowcampus.ui.screens.notifications.rememberUnreadNotificationsCount
+import com.example.flowcampus.ui.screens.notifications.toEnvironmentId
 
 @Composable
 fun HomeScreen(
@@ -32,6 +33,8 @@ fun HomeScreen(
     var places by remember {
         mutableStateOf<List<CampusPlace>>(emptyList())
     }
+
+    val unreadCount = rememberUnreadNotificationsCount()
 
     DisposableEffect(environmentRepository) {
         val listener = environmentRepository.listenEnvironments(
@@ -67,7 +70,8 @@ fun HomeScreen(
                 selectedScreen = AppScreen.HOME,
                 onScreenChange = {
                     currentScreen = it
-                }
+                },
+                alertsBadgeCount = unreadCount
             ) {
                 HomeContent(
                     places = places,
@@ -86,7 +90,8 @@ fun HomeScreen(
                 selectedScreen = AppScreen.ANALYSES,
                 onScreenChange = {
                     currentScreen = it
-                }
+                },
+                alertsBadgeCount = unreadCount
             ) {
                 AnalyticsScreen()
             }
@@ -97,9 +102,15 @@ fun HomeScreen(
                 selectedScreen = AppScreen.ALERTS,
                 onScreenChange = {
                     currentScreen = it
-                }
+                },
+                alertsBadgeCount = unreadCount
             ) {
-                NotificationsScreen()
+                NotificationsScreen(
+                    onNotificationClick = { environmentId ->
+                        places.firstOrNull { it.name.toEnvironmentId() == environmentId }
+                            ?.let { selectedPlace = it }
+                    }
+                )
             }
         }
 
@@ -109,7 +120,7 @@ fun HomeScreen(
                     onBack = {
                         showAddEnvironment = false
                     },
-                    
+
                     onSave = { name, category, building, capacity, operatingHours, description ->
                         val uid = userProfile?.uid
 
@@ -138,7 +149,8 @@ fun HomeScreen(
                     selectedScreen = AppScreen.PROFILE,
                     onScreenChange = {
                         currentScreen = it
-                    }
+                    },
+                    alertsBadgeCount = unreadCount
                 ) {
                     SimpleSectionScreen(
                         title = "Perfil",

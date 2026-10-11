@@ -12,6 +12,7 @@ class NotificationsRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
+    // Escuta a coleção "notifications" em tempo real, da mais nova pra mais antiga
     fun listenNotifications(
         onUpdate: (List<NotificationItem>) -> Unit,
         onError: (Exception) -> Unit
@@ -66,6 +67,7 @@ class NotificationsRepository(
                             description = description,
                             time = formatTimeAgo(createdAt),
                             category = category,
+                            environmentId = document.getString("environmentId") ?: "",
                             createdAt = createdAt
                         )
                     }
@@ -74,9 +76,10 @@ class NotificationsRepository(
             }
     }
 
-    fun listenClearedAt(
+    // Escuta o que é só deste usuário: quando limpou e quando viu as notificações pela última vez
+    fun listenUserState(
         userId: String,
-        onUpdate: (Date?) -> Unit,
+        onUpdate: (clearedAt: Date?, seenAt: Date?) -> Unit,
         onError: (Exception) -> Unit
     ): ListenerRegistration {
         return db.collection("users")
@@ -89,7 +92,8 @@ class NotificationsRepository(
                 }
 
                 onUpdate(
-                    snapshot?.getTimestamp("notificationsClearedAt")?.toDate()
+                    snapshot?.getTimestamp("notificationsClearedAt")?.toDate(),
+                    snapshot?.getTimestamp("notificationsSeenAt")?.toDate()
                 )
             }
     }
@@ -108,5 +112,14 @@ class NotificationsRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    fun markNotificationsAsSeen(userId: String) {
+        db.collection("users")
+            .document(userId)
+            .set(
+                mapOf("notificationsSeenAt" to Timestamp.now()),
+                SetOptions.merge()
+            )
     }
 }

@@ -1,5 +1,6 @@
 package com.example.flowcampus.ui.screens.notifications
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,21 +34,113 @@ import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
-fun NotificationsScreen() {
+fun rememberCurrentUserId(): String? {
+
+    var userId by remember {
+        mutableStateOf(FirebaseAuth.getInstance().currentUser?.uid)
+    }
+
+    DisposableEffect(Unit) {
+
+        val auth = FirebaseAuth.getInstance()
+
+        val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            userId = firebaseAuth.currentUser?.uid
+        }
+
+        auth.addAuthStateListener(authListener)
+
+        onDispose {
+            auth.removeAuthStateListener(authListener)
+        }
+    }
+
+    return userId
+}
+@Composable
+fun rememberUnreadNotificationsCount(): Int {
 
     val repository = remember { NotificationsRepository() }
 
-    val scope = rememberCoroutineScope()
-
-    val userId = remember {
-        FirebaseAuth.getInstance().currentUser?.uid
-    }
+    val userId = rememberCurrentUserId()
 
     var notifications by remember {
         mutableStateOf<List<NotificationItem>>(emptyList())
     }
 
     var clearedAt by remember {
+        mutableStateOf<Date?>(null)
+    }
+
+    var seenAt by remember {
+        mutableStateOf<Date?>(null)
+    }
+
+    DisposableEffect(Unit) {
+
+        val listener = repository.listenNotifications(
+            onUpdate = {
+                notifications = it
+            },
+            onError = { }
+        )
+
+        onDispose {
+            listener.remove()
+        }
+    }
+
+    DisposableEffect(userId) {
+
+        val currentUserId = userId
+
+        clearedAt = null
+        seenAt = null
+
+        val listener = currentUserId?.let { id ->
+            repository.listenUserState(
+                userId = id,
+                onUpdate = { cleared, seen ->
+                    clearedAt = cleared
+                    seenAt = seen
+                },
+                onError = { }
+            )
+        }
+
+        onDispose {
+            listener?.remove()
+        }
+    }
+
+    val clearedDate = clearedAt
+    val seenDate = seenAt
+
+    return notifications.count { notification ->
+        isUnread(notification, clearedDate, seenDate)
+    }
+}
+
+@Composable
+fun NotificationsScreen(
+    onNotificationClick: (String) -> Unit = {}
+) {
+
+    val repository = remember { NotificationsRepository() }
+
+    val scope = rememberCoroutineScope()
+
+    val userId = rememberCurrentUserId()
+
+    var notifications by remember {
+        mutableStateOf<List<NotificationItem>>(emptyList())
+    }
+
+    var clearedAt by remember {
+        mutableStateOf<Date?>(null)
+    }
+
+    var seenAt by remember {
         mutableStateOf<Date?>(null)
     }
 
@@ -65,39 +158,56 @@ fun NotificationsScreen() {
 
     DisposableEffect(Unit) {
 
-        val notificationsListener = repository.listenNotifications(
+        val listener = repository.listenNotifications(
             onUpdate = {
                 notifications = it
                 isLoading = false
                 hasError = false
             },
             onError = {
+                Log.e("Notifications", "Erro ao ler notificações", it)
                 isLoading = false
                 hasError = true
             }
         )
 
-        val clearedListener = userId?.let { id ->
-            repository.listenClearedAt(
+        onDispose {
+            listener.remove()
+        }
+    }
+
+    DisposableEffect(userId) {
+
+        val currentUserId = userId
+
+        clearedAt = null
+        seenAt = null
+
+        val listener = currentUserId?.let { id ->
+            repository.listenUserState(
                 userId = id,
-                onUpdate = {
-                    clearedAt = it
+                onUpdate = { cleared, seen ->
+                    clearedAt = cleared
+                    seenAt = seen
                 },
                 onError = { }
             )
         }
 
         onDispose {
-            notificationsListener.remove()
-            clearedListener?.remove()
+            listener?.remove()
+
+            currentUserId?.let { id ->
+                repository.markNotificationsAsSeen(id)
+            }
         }
     }
 
-    // Esconde o que o usuário já limpou
     val clearedDate = clearedAt
+    val seenDate = seenAt
 
     val visibleNotifications = notifications.filter { notification ->
-        clearedDate == null || notification.createdAt.after(clearedDate)
+        isVisible(notification, clearedDate)
     }
 
     val filteredNotifications = when (selectedFilter) {
@@ -191,7 +301,15 @@ fun NotificationsScreen() {
                     key = { it.id }
                 ) { notification ->
 
-                    NotificationCard(notification)
+                    NotificationCard(
+                        notification = notification,
+                        isUnread = isUnread(notification, clearedDate, seenDate),
+                        onClick = {
+                            if (notification.environmentId.isNotBlank()) {
+                                onNotificationClick(notification.environmentId)
+                            }
+                        }
+                    )
                 }
             }
         }

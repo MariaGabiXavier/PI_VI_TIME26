@@ -63,6 +63,7 @@ import com.example.flowcampus.ui.screens.auth.AuthSession
 fun MainScaffold(
     selectedScreen: AppScreen,
     onScreenChange: (AppScreen) -> Unit,
+    alertsBadgeCount: Int = 0,
     content: @Composable () -> Unit
 ) {
 
@@ -73,7 +74,8 @@ fun MainScaffold(
 
             BottomNavigation(
                 selectedScreen = selectedScreen,
-                onScreenChange = onScreenChange
+                onScreenChange = onScreenChange,
+                alertsBadgeCount = alertsBadgeCount
             )
         }
 

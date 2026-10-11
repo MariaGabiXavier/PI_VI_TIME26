@@ -28,7 +28,8 @@ import com.example.flowcampus.ui.screens.home.BottomNavigationItem
 @Composable
 fun BottomNavigation(
     selectedScreen: AppScreen,
-    onScreenChange: (AppScreen) -> Unit
+    onScreenChange: (AppScreen) -> Unit,
+    alertsBadgeCount: Int = 0
 ) {
 
     Column(

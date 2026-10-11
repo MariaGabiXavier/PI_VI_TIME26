@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.flowcampus.ui.screens.home.Blue
-import com.example.flowcampus.ui.screens.home.BorderGray
 import com.example.flowcampus.ui.screens.home.DarkText
 import com.example.flowcampus.ui.screens.home.GrayText
 
@@ -76,12 +75,20 @@ fun NotificationFilterChip(
 }
 
 @Composable
-fun NotificationCard(notification: NotificationItem) {
+fun NotificationCard(
+    notification: NotificationItem,
+    isUnread: Boolean = false,
+    onClick: () -> Unit = {}
+) {
 
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            }
     ) {
 
         Row(
@@ -107,7 +114,9 @@ fun NotificationCard(notification: NotificationItem) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
 
                 Text(
                     text = notification.title,
@@ -132,11 +141,23 @@ fun NotificationCard(notification: NotificationItem) {
                     fontSize = 11.sp
                 )
             }
+
+            // Bolinha azul, notificação ainda não vista
+            if (isUnread) {
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .padding(top = 5.dp)
+                        .size(9.dp)
+                        .background(Blue, CircleShape)
+                )
+            }
         }
     }
 }
 
-// Mapeia cada categoria de notificação pro ícone correspondente
 private fun NotificationIcon.toImageVector() = when (this) {
     NotificationIcon.OCCUPANCY -> Icons.Default.TrendingUp
     NotificationIcon.WAIT_TIME -> Icons.Default.AccessTime
