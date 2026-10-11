@@ -7,8 +7,9 @@ import com.example.flowcampus.ui.screens.home.LowGreen
 import com.example.flowcampus.ui.screens.home.LowGreenText
 import com.example.flowcampus.ui.screens.home.MediumOrange
 import com.example.flowcampus.ui.screens.home.MediumOrangeText
+import java.util.Date
+import java.util.concurrent.TimeUnit
 
-// Cores extras que o Home ainda não tem, seguindo o mesmo padrão (fundo claro + texto forte)
 val InfoBlue = Color(0xFFDCEAFE)
 val InfoBlueText = Color(0xFF2F6FE0)
 
@@ -20,16 +21,6 @@ enum class NotificationCategory {
     UPDATE
 }
 
-data class NotificationItem(
-    val icon: NotificationIcon,
-    val iconBackground: Color,
-    val iconTint: Color,
-    val title: String,
-    val description: String,
-    val time: String,
-    val category: NotificationCategory
-)
-
 enum class NotificationIcon {
     OCCUPANCY,
     WAIT_TIME,
@@ -37,59 +28,60 @@ enum class NotificationIcon {
     EMPTY_ROOM,
     FORECAST
 }
+enum class NotificationTone {
+    RED,
+    ORANGE,
+    BLUE,
+    GREEN,
+    PURPLE
+}
 
-fun getMockNotifications(): List<NotificationItem> {
+data class NotificationItem(
+    val id: String,
+    val icon: NotificationIcon,
+    val iconBackground: Color,
+    val iconTint: Color,
+    val title: String,
+    val description: String,
+    val time: String,
+    val category: NotificationCategory,
+    val createdAt: Date
+)
 
-    return listOf(
+fun toneBackground(tone: NotificationTone): Color {
 
-        NotificationItem(
-            icon = NotificationIcon.OCCUPANCY,
-            iconBackground = HighRed,
-            iconTint = HighRedText,
-            title = "Refeitório Cheio",
-            description = "Capacidade máxima atingida! Considere ir em outro ambiente/horário.",
-            time = "2 min atrás",
-            category = NotificationCategory.ALERT
-        ),
+    return when (tone) {
+        NotificationTone.RED -> HighRed
+        NotificationTone.ORANGE -> MediumOrange
+        NotificationTone.BLUE -> InfoBlue
+        NotificationTone.GREEN -> LowGreen
+        NotificationTone.PURPLE -> InfoPurple
+    }
+}
 
-        NotificationItem(
-            icon = NotificationIcon.WAIT_TIME,
-            iconBackground = MediumOrange,
-            iconTint = MediumOrangeText,
-            title = "Fila no Laboratório",
-            description = "O tempo de espera está aumentando. Atualmente ~12 min.",
-            time = "15 min atrás",
-            category = NotificationCategory.ALERT
-        ),
+fun toneTint(tone: NotificationTone): Color {
 
-        NotificationItem(
-            icon = NotificationIcon.QUIET_HOURS,
-            iconBackground = InfoBlue,
-            iconTint = InfoBlueText,
-            title = "Horário Silencioso Iniciado",
-            description = "As áreas de estudo silencioso da biblioteca estão ativas. Apenas 12 pessoas no Nível 3.",
-            time = "1 hora atrás",
-            category = NotificationCategory.UPDATE
-        ),
+    return when (tone) {
+        NotificationTone.RED -> HighRedText
+        NotificationTone.ORANGE -> MediumOrangeText
+        NotificationTone.BLUE -> InfoBlueText
+        NotificationTone.GREEN -> LowGreenText
+        NotificationTone.PURPLE -> InfoPurpleText
+    }
+}
 
-        NotificationItem(
-            icon = NotificationIcon.EMPTY_ROOM,
-            iconBackground = LowGreen,
-            iconTint = LowGreenText,
-            title = "Sala de Estudo Vazia",
-            description = "Sua sala de estudo favorita está com pouca gente. É o momento perfeito para ir!",
-            time = "2 horas atrás",
-            category = NotificationCategory.UPDATE
-        ),
+fun formatTimeAgo(date: Date): String {
 
-        NotificationItem(
-            icon = NotificationIcon.FORECAST,
-            iconBackground = InfoPurple,
-            iconTint = InfoPurpleText,
-            title = "Previsão de Pico",
-            description = "Espera-se que a biblioteca esteja muito cheia hoje às 14h. Planeje sua tarefa para mais cedo.",
-            time = "Ontem",
-            category = NotificationCategory.UPDATE
-        )
+    val minutes = TimeUnit.MILLISECONDS.toMinutes(
+        System.currentTimeMillis() - date.time
     )
+
+    return when {
+        minutes < 1 -> "Agora"
+        minutes < 60 -> "$minutes min atrás"
+        minutes < 120 -> "1 hora atrás"
+        minutes < 24 * 60 -> "${minutes / 60} horas atrás"
+        minutes < 48 * 60 -> "Ontem"
+        else -> "${minutes / (24 * 60)} dias atrás"
+    }
 }
