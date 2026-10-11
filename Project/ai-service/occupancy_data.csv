@@ -1,0 +1,26 @@
+
+timestamp,environment,hour,day_of_week,is_weekend,current_occupancy,current_visitors,current_wait_minutes,target_next_occupancy
+2026-09-01 09:00:00,Praca Alimentacao,9,1,0,20,25,3,28
+2026-09-01 09:00:00,Biblioteca,9,1,0,15,18,1,18
+2026-09-01 09:00:00,Laboratorios,9,1,0,25,30,2,30
+2026-09-01 10:00:00,Praca Alimentacao,10,1,0,28,35,5,40
+2026-09-01 10:00:00,Biblioteca,10,1,0,18,22,2,22
+2026-09-01 10:00:00,Laboratorios,10,1,0,30,35,3,32
+2026-09-01 11:00:00,Praca Alimentacao,11,1,0,40,50,8,55
+2026-09-01 11:00:00,Biblioteca,11,1,0,22,28,2,25
+2026-09-01 11:00:00,Laboratorios,11,1,0,32,40,4,38
+2026-09-01 12:00:00,Praca Alimentacao,12,1,0,55,70,12,75
+2026-09-01 12:00:00,Biblioteca,12,1,0,25,30,3,28
+2026-09-01 12:00:00,Laboratorios,12,1,0,38,45,5,42
+2026-09-01 13:00:00,Praca Alimentacao,13,1,0,75,90,18,68
+2026-09-01 13:00:00,Biblioteca,13,1,0,28,35,3,30
+2026-09-01 13:00:00,Laboratorios,13,1,0,42,50,6,45
+2026-09-01 14:00:00,Praca Alimentacao,14,1,0,68,80,14,55
+2026-09-01 14:00:00,Biblioteca,14,1,0,30,38,4,32
+2026-09-01 14:00:00,Laboratorios,14,1,0,45,55,7,40
+2026-09-01 15:00:00,Praca Alimentacao,15,1,0,55,65,10,42
+2026-09-01 15:00:00,Biblioteca,15,1,0,32,40,4,28
+2026-09-01 15:00:00,Laboratorios,15,1,0,40,48,5,35
+2026-09-01 16:00:00,Praca Alimentacao,16,1,0,42,50,7,30
+2026-09-01 16:00:00,Biblioteca,16,1,0,28,35,3,24
+2026-09-01 16:00:00,Laboratorios,16,1,0,35,42,4,28

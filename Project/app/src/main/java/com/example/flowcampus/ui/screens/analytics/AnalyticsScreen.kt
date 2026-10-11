@@ -19,6 +19,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.flowcampus.ai.AiRepository
 import com.example.flowcampus.ui.theme.AppBlue
 import com.example.flowcampus.ui.theme.AppNavy
 
@@ -36,6 +38,10 @@ fun AnalyticsScreen() {
 
     val repository = remember {
         AnalyticsRepository()
+    }
+
+    val aiRepository = remember {
+        AiRepository()
     }
 
     var selectedPeriod by remember {
@@ -51,7 +57,15 @@ fun AnalyticsScreen() {
         mutableStateOf(false)
     }
 
-    var insights by remember {
+    // Insights guardados no Firestore: aparecem na hora (e servem de reserva
+    // se o servidor de IA estiver desligado)
+    var firestoreInsights by remember {
+        mutableStateOf<List<AnalyticsInsight>>(emptyList())
+    }
+
+    // Insights gerados pela IA (KNN / SVM / Random Forest): chegam alguns
+    // segundos depois, quando o servidor termina de treinar os modelos
+    var aiInsights by remember {
         mutableStateOf<List<AnalyticsInsight>>(emptyList())
     }
 
@@ -85,7 +99,7 @@ fun AnalyticsScreen() {
 
         val listener = repository.listenInsights(
             onUpdate = { updatedInsights ->
-                insights = updatedInsights
+                firestoreInsights = updatedInsights
             },
             onError = { error ->
                 Log.e(
@@ -100,6 +114,33 @@ fun AnalyticsScreen() {
             listener.remove()
         }
     }
+
+    // Pede a previsão ao servidor de IA ao abrir a tela. A cada chamada ele
+    // treina os 3 modelos, escolhe o de menor MAE e devolve os insights.
+    LaunchedEffect(Unit) {
+
+        aiRepository.fetchForecast()
+            .onSuccess { forecast ->
+                aiInsights = forecast.insights.map { insight ->
+                    buildAnalyticsInsight(
+                        text = insight.text,
+                        highlight = insight.highlight,
+                        icon = insight.icon,
+                        tone = insight.tone
+                    )
+                }
+            }
+            .onFailure { error ->
+                Log.w(
+                    "AnalyticsScreen",
+                    "Servidor de IA indisponivel; mantendo os insights do Firestore",
+                    error
+                )
+            }
+    }
+
+    // IA quando disponível; senão, os do Firestore
+    val shownInsights = aiInsights.ifEmpty { firestoreInsights }
 
     val currentStats = dailyStats
 
@@ -222,7 +263,7 @@ fun AnalyticsScreen() {
             }
         }
 
-        if (insights.isNotEmpty()) {
+        if (shownInsights.isNotEmpty()) {
 
             Spacer(
                 modifier = Modifier.height(24.dp)
@@ -243,7 +284,7 @@ fun AnalyticsScreen() {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
-                insights.forEach { insight ->
+                shownInsights.forEach { insight ->
 
                     InsightCard(
                         insight = insight

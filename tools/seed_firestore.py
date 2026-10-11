@@ -67,6 +67,12 @@ COL_INSIGHTS = "ai_insights"
 # --------------------------------------------------------------------------
 WEEK_NORMAL = {0: 1.0, 1: 1.0, 2: 1.0, 3: 1.0, 4: 0.85, 5: 0.45, 6: 0.10}
 
+# Tendencia: o campus vem ficando mais movimentado. Sem isso toda semana seria
+# igual e "Semana" ficaria identica a "Mes".
+# chave = quantas semanas atras (0 = ultimos 7 dias, 1 = semana anterior, ...)
+WEEK_TREND = {0: 1.12, 1: 1.00, 2: 0.90, 3: 0.88}
+WEEK_TREND_OLDER = 0.85
+
 ENVIRONMENTS = [
     dict(
         key="refeitorio", name="Refeitório", category="RESTAURANT",
@@ -83,6 +89,7 @@ ENVIRONMENTS = [
         hours=(7, 22), base=0.20, peaks=[(14.0, 2.0, 0.28), (19.0, 1.6, 0.22)],
         week={0: 1.0, 1: 1.4, 2: 1.0, 3: 1.0, 4: 1.0, 5: 0.5, 6: 0.10},  # terca +40%
         turnover=0.35, wait_scale=4,
+        recent_boost=1.25,  # epoca de provas: ultimas 2 semanas mais cheias
     ),
     dict(
         key="ponto-de-onibus", name="Ponto de ônibus", category="BUS",
@@ -136,8 +143,12 @@ def generate_environment_days(env, env_id, env_name, capacity, today, days, seed
         day = first_day + timedelta(days=offset)
         date_key = day.isoformat()
         shifted = (today - day).days < 7  # "essa semana"
+        weeks_back = (today - day).days // 7
+        trend = WEEK_TREND.get(weeks_back, WEEK_TREND_OLDER)
+        if weeks_back <= 1:
+            trend *= env.get("recent_boost", 1.0)
         rng = random.Random(f"{seed}|{env['key']}|{date_key}")  # deterministico
-        day_factor = env["week"][day.weekday()] * rng.gauss(1, 0.05)
+        day_factor = env["week"][day.weekday()] * trend * rng.gauss(1, 0.05)
         day_readings = []
 
         for hour in range(start, end):
