@@ -128,7 +128,7 @@ fun NotificationCard(notification: NotificationItem) {
 
                 Text(
                     text = notification.time,
-                    color = BorderGray,
+                    color = Color(0xFF9CA3B5),
                     fontSize = 11.sp
                 )
             }
