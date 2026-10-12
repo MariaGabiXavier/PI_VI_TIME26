@@ -53,7 +53,6 @@ fun PlaceDetailScreen(
     place: CampusPlace,
     onBack: () -> Unit
 ) {
-
     val data = getMockDetail(place)
 
     Column(
@@ -127,7 +126,7 @@ fun PlaceDetailScreen(
                 ) {
 
                     Text(
-                        text = data.people.toString(),
+                        text = place.people.toString(),
                         color = DarkText,
                         fontSize = 43.sp,
                         fontWeight = FontWeight.Bold,
@@ -246,7 +245,7 @@ fun PlaceDetailScreen(
             }
 
             item {
-                OccupationChart()
+                OccupationChart(data = data)
             }
 
             item {
@@ -266,38 +265,6 @@ fun PlaceDetailScreen(
                 )
             }
 
-            item {
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-
-                        Text(
-                            text = "7-Day Trend",
-                            color = DarkText,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(
-                            modifier = Modifier.height(4.dp)
-                        )
-
-                        Text(
-                            text = "Weekly volume is down 8%",
-                            color = GrayText,
-                            fontSize = 9.sp
-                        )
-                    }
-
-                    WeeklyTrendChart()
-                }
-            }
         }
     }
 }
@@ -370,39 +337,24 @@ fun DetailInfoCard(
 }
 
 @Composable
-fun OccupationChart() {
-
-    val values = listOf(
-        25f,
-        32f,
-        48f,
-        75f,
-        66f,
-        35f,
-        25f,
-        20f
-    )
+fun OccupationChart(data: PlaceDetailMock) {
+    val capacity = data.capacity.coerceAtLeast(1)
 
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(125.dp),
-
+                .height(145.dp),
             shape = RoundedCornerShape(17.dp),
-
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),
-
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 0.dp
             )
         ) {
-
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -410,54 +362,51 @@ fun OccupationChart() {
                         start = 16.dp,
                         end = 16.dp,
                         top = 14.dp,
-                        bottom = 25.dp
+                        bottom = 18.dp
                     )
             ) {
+                val count = minOf(data.hourlyPeople.size, data.hours.size)
 
-                val maxValue = 80f
-                val chartHeight = size.height
-                val barWidth = 10.dp.toPx()
+                if (count > 0) {
+                    val barWidth = 12.dp.toPx()
+                    val chartHeight = size.height
+                    val spacing = (
+                        size.width - barWidth * count
+                    ).coerceAtLeast(0f) / count
 
-                val spacing =
-                    (size.width - barWidth * values.size) /
-                            (values.size - 1)
+                    repeat(count) { index ->
+                        val people = data.hourlyPeople[index]
+                        val hour = data.hours[index]
 
-                values.forEachIndexed { index, value ->
+                        val percentage = (
+                            people.toFloat() / capacity
+                        ).coerceIn(0f, 1f)
 
-                    val barHeight =
-                        (value / maxValue) * chartHeight
+                        val barHeight = (
+                            percentage * chartHeight
+                        ).coerceAtLeast(3.dp.toPx())
 
-                    val x =
-                        index * spacing
+                        val x = index * (barWidth + spacing)
+                        val y = chartHeight - barHeight
 
-                    val y =
-                        chartHeight - barHeight
-
-                    val barColor =
-                        if (index >= 5) {
-                            Color(0xFF71C997)
-                        } else {
+                        // Horários anteriores e atuais: azul.
+                        // Horários futuros: verde.
+                        val color = if (hour <= java.time.LocalTime.now().hour) {
                             Blue
+                        } else {
+                            Color(0xFF71C997)
                         }
 
-                    drawRoundRect(
-                        color = barColor,
-
-                        topLeft = Offset(
-                            x = x,
-                            y = y
-                        ),
-
-                        size = Size(
-                            width = barWidth,
-                            height = barHeight
-                        ),
-
-                        cornerRadius = CornerRadius(
-                            4.dp.toPx(),
-                            4.dp.toPx()
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(x, y),
+                            size = Size(barWidth, barHeight),
+                            cornerRadius = CornerRadius(
+                                4.dp.toPx(),
+                                4.dp.toPx()
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -465,29 +414,15 @@ fun OccupationChart() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(
-                    start = 20.dp,
-                    end = 20.dp
-                ),
-
+                .padding(horizontal = 5.dp, vertical = 5.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-
-            listOf(
-                "8am",
-                "10am",
-                "12pm",
-                "14pm",
-                "16pm",
-                "18pm",
-                "20pm",
-                "22pm"
-            ).forEach { label ->
-
+            data.hours.forEach { hour ->
                 Text(
-                    text = label,
+                    text = String.format("%02d:00", hour),
                     color = Color(0xFF9CA3B5),
-                    fontSize = 7.sp
+                    fontSize = 7.sp,
+                    maxLines = 1
                 )
             }
         }
@@ -585,8 +520,14 @@ fun AIRecommendationCard(
                     lineHeight = 13.sp
                 )
 
+                
                 Text(
-                    text = "Melhor horário para visitar é daqui a 45 minutos.",
+                    text = if (data.minutesUntilRecommendation == 0) {
+                        "Este é o último horário disponível na simulação."
+                    } else {
+                        "Horário sugerido em aproximadamente " +
+                            "${data.minutesUntilRecommendation} minutos."
+                    },
                     color = GrayText,
                     fontSize = 9.sp,
                     lineHeight = 13.sp

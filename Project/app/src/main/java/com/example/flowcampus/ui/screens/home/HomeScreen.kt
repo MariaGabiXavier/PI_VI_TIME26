@@ -14,6 +14,9 @@ import com.example.flowcampus.ui.screens.auth.UserRole
 import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
 import com.example.flowcampus.ui.screens.notifications.rememberUnreadNotificationsCount
 import com.example.flowcampus.ui.screens.notifications.toEnvironmentId
+import androidx.compose.runtime.LaunchedEffect
+import com.example.flowcampus.ai.AiForecast
+import com.example.flowcampus.ai.AiRepository
 
 @Composable
 fun HomeScreen(
@@ -30,8 +33,58 @@ fun HomeScreen(
         EnvironmentRepository()
     }
 
+    val aiRepository = remember {
+        AiRepository()
+    }
+
     var places by remember {
         mutableStateOf<List<CampusPlace>>(emptyList())
+    }
+
+    var aiForecast by remember {
+        mutableStateOf<AiForecast?>(null)
+    }
+
+    LaunchedEffect(aiRepository) {
+        aiRepository.fetchForecast()
+            .onSuccess { forecast ->
+                aiForecast = forecast
+            }
+            .onFailure { error ->
+                Log.w(
+                    "HomeScreen",
+                    "Não foi possível carregar as previsões da IA",
+                    error
+                )
+            }
+    }
+
+    
+    val placesWithForecast = places.map { place ->
+        // Gera dados simulados para ambientes sem previsão da IA.
+        val simulatedPlace = simulatePlace(place)
+
+        val prediction = aiForecast
+            ?.forEnvironment(place.name)
+            ?.points
+            ?.firstOrNull()
+
+        if (prediction == null) {
+            // Sem previsão disponível: usa a simulação.
+            simulatedPlace
+        } else {
+            // Com previsão: usa a quantidade prevista pela IA.
+            val people = prediction.predictedPeople
+                .coerceIn(0, simulatedPlace.capacity)
+
+            simulatedPlace.copy(
+                people = people,
+                status = occupancyStatus(
+                    people = people,
+                    capacity = simulatedPlace.capacity
+                )
+            )
+        }
     }
 
     val unreadCount = rememberUnreadNotificationsCount()
@@ -74,7 +127,7 @@ fun HomeScreen(
                 alertsBadgeCount = unreadCount
             ) {
                 HomeContent(
-                    places = places,
+                    places = placesWithForecast,
                     onPlaceClick = { place ->
                         selectedPlace = place
                     },
@@ -167,7 +220,7 @@ fun HomeScreen(
 
         AppScreen.ALL_PLACES -> {
             AllPlacesScreen(
-                places = places,
+                places = placesWithForecast,
                 onBack = {
                     currentScreen = AppScreen.HOME
                 },

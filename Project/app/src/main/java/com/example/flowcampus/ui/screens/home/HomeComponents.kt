@@ -437,9 +437,16 @@ fun CampusStatusCard(
                 )
 
                 Text(
-                    text = "~${place.minutes} min",
+                    text = if (place.status == "Sem dados") {
+                        "Sem dados"
+                    } else {
+                        "${place.minutes} min"
+                    },
                     color = GrayText,
-                    fontSize = 9.sp
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip
                 )
 
                 Spacer(

@@ -8,6 +8,8 @@ import com.example.flowcampus.ui.theme.AppGrayText
 import com.example.flowcampus.ui.theme.AppGreen
 import com.example.flowcampus.ui.theme.AppNavy
 import com.example.flowcampus.ui.theme.AppRed
+import java.time.LocalTime
+import kotlin.math.roundToInt
 
 val BackgroundColor = AppBackground
 val Blue = AppBlue
@@ -30,7 +32,8 @@ data class CampusPlace(
     val minutes: Int,
     val status: String,
     val iconType: PlaceIcon,
-    val favorite: Boolean
+    val favorite: Boolean,
+    val capacity: Int = 40
 )
 
 enum class PlaceIcon {
@@ -48,70 +51,157 @@ data class PlaceDetailMock(
     val peakTime: String,
     val capacity: Int,
     val recommendationPeople: Int,
-    val recommendationTime: String
+    val recommendationTime: String,
+    val hourlyPeople: List<Int> = emptyList(),
+    val hours: List<Int> = emptyList(),
+    val minutesUntilRecommendation: Int = 0
 )
 
-fun getMockDetail(
-    place: CampusPlace
-): PlaceDetailMock {
+private data class SimulationProfile(
+    val capacity: Int,
+    val baseline: Int,
+    val peakHour: Int,
+    val peakPeople: Int
+)
 
-    return when (place.name) {
+private fun profileFor(place: CampusPlace): SimulationProfile {
+    val name = place.name.lowercase()
+    val capacity = place.capacity.coerceAtLeast(1)
 
-        "Refeitório" -> PlaceDetailMock(
-            people = 78,
-            waitingTime = 15,
-            peakTime = "12:30 PM",
-            capacity = 120,
-            recommendationPeople = 25,
-            recommendationTime = "14:30 PM"
-        )
+    return when {
+        "refeit" in name || "cafeter" in name ->
+            SimulationProfile(capacity, 35, 12, (capacity * 0.80).roundToInt().coerceAtLeast(1))
 
-        "Biblioteca" -> PlaceDetailMock(
-            people = 34,
-            waitingTime = 3,
-            peakTime = "14:00 PM",
-            capacity = 80,
-            recommendationPeople = 15,
-            recommendationTime = "15:30 PM"
-        )
+        "biblioteca" in name ->
+            SimulationProfile(capacity, 18, 14, (capacity * 0.71).roundToInt().coerceAtLeast(1))
 
-        "Ponto de ônibus" -> PlaceDetailMock(
-            people = 52,
-            waitingTime = 8,
-            peakTime = "13:00 PM",
-            capacity = 70,
-            recommendationPeople = 30,
-            recommendationTime = "14:00 PM"
-        )
+        "ônibus" in name || "onibus" in name ->
+            SimulationProfile(capacity, 12, 13, (capacity * 0.74).roundToInt().coerceAtLeast(1))
 
-        "Lab A2" -> PlaceDetailMock(
-            people = 21,
-            waitingTime = 2,
-            peakTime = "10:30 AM",
-            capacity = 40,
-            recommendationPeople = 10,
-            recommendationTime = "11:30 AM"
-        )
+        "a2" in name ->
+            SimulationProfile(capacity, 8, 10, (capacity * 0.72).roundToInt().coerceAtLeast(1))
 
-        "Sala Estudo - 7A" -> PlaceDetailMock(
-            people = 63,
-            waitingTime = 10,
-            peakTime = "16:00 PM",
-            capacity = 80,
-            recommendationPeople = 35,
-            recommendationTime = "17:30 PM"
-        )
+        "a4" in name ->
+            SimulationProfile(capacity, 6, 15, (capacity * 0.65).roundToInt().coerceAtLeast(1))
 
-        else -> PlaceDetailMock(
-            people = 15,
-            waitingTime = 1,
-            peakTime = "12:00 PM",
-            capacity = 40,
-            recommendationPeople = 8,
-            recommendationTime = "13:30 PM"
-        )
+        "estudo" in name ->
+            SimulationProfile(capacity, 15, 16, (capacity * 0.78).roundToInt().coerceAtLeast(1))
+
+        else ->
+            SimulationProfile(capacity, 8, 12, (capacity * 0.72).roundToInt().coerceAtLeast(1))
     }
 }
+
+private fun simulatedPeopleAt(
+    profile: SimulationProfile,
+    hour: Int
+): Int {
+    val distance = kotlin.math.abs(hour - profile.peakHour)
+    val peakFactor = (1.0 - distance * 0.17).coerceIn(0.18, 1.0)
+    val offHoursFactor = if (hour < 8 || hour >= 22) 0.12 else 1.0
+
+    return (
+        profile.baseline +
+            (profile.peakPeople - profile.baseline) *
+            peakFactor * offHoursFactor
+        ).roundToInt().coerceIn(0, profile.capacity)
+}
+
+fun occupancyStatus(people: Int, capacity: Int): String {
+    if (capacity <= 0) return "Baixo"
+
+    val ratio = people.toDouble() / capacity
+
+    return when {
+        ratio >= 0.70 -> "Alto"
+        ratio >= 0.40 -> "Médio"
+        else -> "Baixo"
+    }
+}
+
+fun simulatePlace(
+    place: CampusPlace,
+    now: LocalTime = LocalTime.now()
+): CampusPlace {
+    val profile = profileFor(place)
+    val people = simulatedPeopleAt(profile, now.hour)
+
+    val futurePeople = (now.hour..minOf(now.hour + 3, 23))
+        .map { simulatedPeopleAt(profile, it) }
+
+    val minutesToLowOccupancy = futurePeople
+        .indexOfFirst { it <= profile.capacity * 0.40 }
+        .let { index -> if (index < 0) 0 else index * 60 }
+
+    return place.copy(
+        people = people,
+        minutes = minutesToLowOccupancy.coerceIn(0, 180),
+        status = occupancyStatus(people, profile.capacity),
+        capacity = profile.capacity
+    )
+}
+
+
+fun getMockDetail(
+    place: CampusPlace,
+    now: LocalTime = LocalTime.now()
+): PlaceDetailMock {
+    val profile = profileFor(place)
+
+    // Dados do gráfico: ocupação simulada a cada duas horas.
+    val hours = (8..22 step 2).toList()
+    val values = hours.map { hour ->
+        simulatedPeopleAt(profile, hour)
+    }
+
+    // Maior ocupação entre os horários apresentados no gráfico.
+    val peakIndex = values.indices.maxByOrNull { values[it] }
+    val peakHour = peakIndex?.let { hours[it] } ?: profile.peakHour
+
+    // Procura o próximo horário com ocupação baixa.
+    val futureHours = ((now.hour + 1)..23).toList()
+
+    val lowOccupancyHour = futureHours.firstOrNull { hour ->
+        simulatedPeopleAt(profile, hour) <= profile.capacity * 0.40
+    }
+
+    // Se não houver horário de baixa ocupação, escolhe o menos movimentado
+    // entre os horários futuros, em vez de retornar zero indevidamente.
+    val recommendationHour = lowOccupancyHour
+        ?: futureHours.minByOrNull { hour ->
+            simulatedPeopleAt(profile, hour)
+        }
+        ?: now.hour
+
+    val recommendationPeople =
+        simulatedPeopleAt(profile, recommendationHour)
+
+    val minutesUntil = if (recommendationHour == now.hour) {
+        0
+    } else {
+        (
+            (recommendationHour - now.hour) * 60 - now.minute
+        ).coerceAtLeast(1)
+    }
+
+    val waitingTime = minutesUntil
+
+    return PlaceDetailMock(
+        people = place.people,
+        waitingTime = waitingTime,
+        peakTime = String.format("%02d:00", peakHour),
+        capacity = profile.capacity,
+        recommendationPeople = recommendationPeople,
+        recommendationTime = String.format(
+            "%02d:00",
+            recommendationHour
+        ),
+        hourlyPeople = values,
+        hours = hours,
+        minutesUntilRecommendation = minutesUntil
+    )
+}
+
 
 enum class AppScreen {
     HOME,
