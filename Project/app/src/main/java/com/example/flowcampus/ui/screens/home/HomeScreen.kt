@@ -17,11 +17,13 @@ import com.example.flowcampus.ui.screens.notifications.toEnvironmentId
 import androidx.compose.runtime.LaunchedEffect
 import com.example.flowcampus.ai.AiForecast
 import com.example.flowcampus.ai.AiRepository
+import com.example.flowcampus.ui.screens.notifications.SetupPushNotifications
 
 @Composable
 fun HomeScreen(
     onLogout: () -> Unit
 ) {
+    SetupPushNotifications()
     val userProfile by AuthSession.user.collectAsState()
     val isStaff = userProfile?.role == UserRole.STAFF
 
