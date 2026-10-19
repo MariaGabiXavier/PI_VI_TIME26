@@ -22,6 +22,7 @@ import kotlinx.coroutines.tasks.await
  *     ├─ name: String
  *     ├─ email: String
  *     ├─ role: "STUDENT" | "TEACHER" | "STAFF"
+ *     ├─ ra: String (opcional, preenchido em Editar Perfil)
  *     └─ createdAt: Timestamp
  */
 class FirebaseAuthRepository(
@@ -144,7 +145,8 @@ class FirebaseAuthRepository(
             name = name,
             email = email,
             role = role,
-            createdAtMillis = getTimestamp("createdAt")?.toDate()?.time
+            createdAtMillis = getTimestamp("createdAt")?.toDate()?.time,
+            ra = getString("ra").orEmpty()
         )
     }
 
