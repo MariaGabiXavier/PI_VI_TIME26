@@ -22,7 +22,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +36,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 fun AllPlacesScreen(
     places: List<CampusPlace>,
     onBack: () -> Unit,
-    onPlaceClick: (CampusPlace) -> Unit
+    onPlaceClick: (CampusPlace) -> Unit,
+    onFavoriteChange: (CampusPlace, Boolean) -> Unit = { _, _ -> }
 ) {
 
     Column(
@@ -101,72 +101,11 @@ fun AllPlacesScreen(
                     place = place,
                     onClick = {
                         onPlaceClick(place)
+                    },
+                    onFavoriteChange = { favorite ->
+                        onFavoriteChange(place, favorite)
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun SimpleSectionScreen(
-    title: String,
-    description: String,
-    onLogout: (() -> Unit)? = null,
-    isStaff: Boolean = false,
-    onAddEnvironment: (() -> Unit)? = null
-) {
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundColor)
-            .padding(24.dp)
-    ) {
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
-
-        Text(
-            text = title,
-            color = DarkText,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(
-            modifier = Modifier.height(10.dp)
-        )
-
-        Text(
-            text = description,
-            color = GrayText,
-            fontSize = 13.sp
-        )
-
-        if (isStaff && onAddEnvironment != null) {
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Button(
-                onClick = onAddEnvironment,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Adicionar ambiente")
-            }
-        }
-
-        if (onLogout != null) {
-
-            Spacer(
-                modifier = Modifier.height(28.dp)
-            )
-
-            Button(
-                onClick = onLogout,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sair da conta")
             }
         }
     }

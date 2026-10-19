@@ -30,6 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.flowcampus.ai.AiRepository
+import com.example.flowcampus.ui.screens.auth.AuthSession
+import com.example.flowcampus.ui.screens.profile.ProfileRepository
 import com.example.flowcampus.ui.theme.AppBlue
 import com.example.flowcampus.ui.theme.AppNavy
 
@@ -42,6 +44,10 @@ fun AnalyticsScreen() {
 
     val aiRepository = remember {
         AiRepository()
+    }
+
+    val profileRepository = remember {
+        ProfileRepository()
     }
 
     var selectedPeriod by remember {
@@ -128,6 +134,11 @@ fun AnalyticsScreen() {
                         icon = insight.icon,
                         tone = insight.tone
                     )
+                }
+
+                // Conta no Perfil como "previsão usada"
+                AuthSession.user.value?.uid?.let { userId ->
+                    profileRepository.registerPredictionUsed(userId)
                 }
             }
             .onFailure { error ->

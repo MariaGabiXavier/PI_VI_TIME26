@@ -98,7 +98,8 @@ fun MainScaffold(
 fun HomeContent(
     places: List<CampusPlace>,
     onPlaceClick: (CampusPlace) -> Unit,
-    onSeeAllClick: () -> Unit
+    onSeeAllClick: () -> Unit,
+    onFavoriteChange: (CampusPlace, Boolean) -> Unit = { _, _ -> }
 ) {
 
     // Usuário logado (preenchido no login/cadastro ou no login automático)
@@ -260,6 +261,9 @@ fun HomeContent(
                         place = place,
                         onClick = {
                             onPlaceClick(place)
+                        },
+                        onFavoriteChange = { favorite ->
+                            onFavoriteChange(place, favorite)
                         }
                     )
                 }
@@ -334,10 +338,12 @@ fun SearchBar(
 @Composable
 fun CampusStatusCard(
     place: CampusPlace,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFavoriteChange: (Boolean) -> Unit = {}
 ) {
 
-    var isFavorite by remember {
+    // Volta a ler de place.favorite quando o Firestore confirma a mudança
+    var isFavorite by remember(place.favorite) {
         mutableStateOf(place.favorite)
     }
 
@@ -456,6 +462,7 @@ fun CampusStatusCard(
                 IconButton(
                     onClick = {
                         isFavorite = !isFavorite
+                        onFavoriteChange(isFavorite)
                     },
                     modifier = Modifier.size(25.dp)
                 ) {

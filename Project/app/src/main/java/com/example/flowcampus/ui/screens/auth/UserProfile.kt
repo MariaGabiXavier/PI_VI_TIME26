@@ -20,7 +20,8 @@ data class UserProfile(
     val name: String,
     val email: String,
     val role: UserRole,
-    val createdAtMillis: Long? = null
+    val createdAtMillis: Long? = null,
+    val ra: String = ""
 ) {
 
     val initials: String

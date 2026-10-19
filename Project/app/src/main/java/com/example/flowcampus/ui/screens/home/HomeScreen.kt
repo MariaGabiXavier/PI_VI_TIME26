@@ -1,6 +1,7 @@
 package com.example.flowcampus.ui.screens.home
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -10,7 +11,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.flowcampus.ui.screens.analytics.AnalyticsScreen
 import com.example.flowcampus.ui.screens.auth.AuthSession
-import com.example.flowcampus.ui.screens.auth.UserRole
 import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
 import com.example.flowcampus.ui.screens.notifications.rememberUnreadNotificationsCount
 import com.example.flowcampus.ui.screens.notifications.toEnvironmentId
@@ -18,6 +18,10 @@ import androidx.compose.runtime.LaunchedEffect
 import com.example.flowcampus.ai.AiForecast
 import com.example.flowcampus.ai.AiRepository
 import com.example.flowcampus.ui.screens.notifications.SetupPushNotifications
+import com.example.flowcampus.ui.screens.profile.EditProfileScreen
+import com.example.flowcampus.ui.screens.profile.ProfileRepository
+import com.example.flowcampus.ui.screens.profile.ProfileScreen
+import com.example.flowcampus.ui.screens.profile.UserActivity
 
 @Composable
 fun HomeScreen(
@@ -25,9 +29,13 @@ fun HomeScreen(
 ) {
     SetupPushNotifications()
     val userProfile by AuthSession.user.collectAsState()
-    val isStaff = userProfile?.role == UserRole.STAFF
+    val userId = userProfile?.uid
 
     var showAddEnvironment by remember {
+        mutableStateOf(false)
+    }
+
+    var showEditProfile by remember {
         mutableStateOf(false)
     }
 
@@ -39,8 +47,16 @@ fun HomeScreen(
         AiRepository()
     }
 
+    val profileRepository = remember {
+        ProfileRepository()
+    }
+
     var places by remember {
         mutableStateOf<List<CampusPlace>>(emptyList())
+    }
+
+    var activity by remember {
+        mutableStateOf(UserActivity())
     }
 
     var aiForecast by remember {
@@ -110,12 +126,63 @@ fun HomeScreen(
         }
     }
 
+    // Favoritos e números do Perfil ficam no documento do usuário
+    DisposableEffect(userId) {
+        activity = UserActivity()
+
+        val listener = userId?.let { id ->
+            profileRepository.listenActivity(
+                userId = id,
+                onUpdate = { updatedActivity ->
+                    activity = updatedActivity
+                },
+                onError = { error ->
+                    Log.e(
+                        "HomeScreen",
+                        "Erro ao carregar dados do perfil",
+                        error
+                    )
+                }
+            )
+        }
+
+        onDispose {
+            listener?.remove()
+        }
+    }
+
+    // Favoritos por cima da lista que já tem a previsão da IA
+    val placesWithFavorites = placesWithForecast.map { place ->
+        place.copy(favorite = place.name.toEnvironmentId() in activity.favoriteIds)
+    }
+
+    val onFavoriteChange: (CampusPlace, Boolean) -> Unit = { place, favorite ->
+        userId?.let { id ->
+            profileRepository.setFavorite(
+                userId = id,
+                environmentId = place.name.toEnvironmentId(),
+                favorite = favorite
+            )
+        }
+    }
+
     var currentScreen by remember {
         mutableStateOf(AppScreen.HOME)
     }
 
     var selectedPlace by remember {
         mutableStateOf<CampusPlace?>(null)
+    }
+
+    // Abrir o status de um local conta como visita no Perfil
+    LaunchedEffect(selectedPlace) {
+        if (selectedPlace != null && userId != null) {
+            profileRepository.registerVisit(userId)
+        }
+    }
+
+    BackHandler(enabled = selectedPlace != null) {
+        selectedPlace = null
     }
 
     when (currentScreen) {
@@ -129,13 +196,14 @@ fun HomeScreen(
                 alertsBadgeCount = unreadCount
             ) {
                 HomeContent(
-                    places = placesWithForecast,
+                    places = placesWithFavorites,
                     onPlaceClick = { place ->
                         selectedPlace = place
                     },
                     onSeeAllClick = {
                         currentScreen = AppScreen.ALL_PLACES
-                    }
+                    },
+                    onFavoriteChange = onFavoriteChange
                 )
             }
         }
@@ -170,65 +238,94 @@ fun HomeScreen(
         }
 
         AppScreen.PROFILE -> {
-            if (showAddEnvironment) {
-                AddEnvironmentScreen(
-                    onBack = {
-                        showAddEnvironment = false
-                    },
+            val user = userProfile
 
-                    onSave = { name, category, building, capacity, operatingHours, description ->
-                        val uid = userProfile?.uid
+            when {
+                showAddEnvironment -> {
+                    AddEnvironmentScreen(
+                        onBack = {
+                            showAddEnvironment = false
+                        },
 
-                        if (uid.isNullOrBlank()) {
-                            Result.failure<Unit>(
-                                IllegalStateException(
-                                    "Não foi possível identificar o usuário conectado."
+                        onSave = { name, category, building, capacity, operatingHours, description ->
+                            val uid = userProfile?.uid
+
+                            if (uid.isNullOrBlank()) {
+                                Result.failure<Unit>(
+                                    IllegalStateException(
+                                        "Não foi possível identificar o usuário conectado."
+                                    )
                                 )
-                            )
-                        } else {
-                            environmentRepository.addEnvironment(
-                                name = name,
-                                category = category,
-                                building = building,
-                                capacity = capacity,
-                                operatingHours = operatingHours,
-                                description = description,
-                                createdBy = uid
-                            )
+                            } else {
+                                environmentRepository.addEnvironment(
+                                    name = name,
+                                    category = category,
+                                    building = building,
+                                    capacity = capacity,
+                                    operatingHours = operatingHours,
+                                    description = description,
+                                    createdBy = uid
+                                )
+                            }
                         }
-                    }
 
-                )
-            } else {
-                MainScaffold(
-                    selectedScreen = AppScreen.PROFILE,
-                    onScreenChange = {
-                        currentScreen = it
-                    },
-                    alertsBadgeCount = unreadCount
-                ) {
-                    SimpleSectionScreen(
-                        title = "Perfil",
-                        description = "Aqui ficarão as informações do usuário.",
-                        onLogout = onLogout,
-                        isStaff = isStaff,
-                        onAddEnvironment = {
-                            showAddEnvironment = true
+                    )
+                }
+
+                showEditProfile && user != null -> {
+                    EditProfileScreen(
+                        user = user,
+                        onBack = {
+                            showEditProfile = false
+                        },
+                        onSave = { name, ra ->
+                            profileRepository.updateProfile(
+                                profile = user,
+                                name = name,
+                                ra = ra
+                            )
                         }
                     )
+                }
+
+                else -> {
+                    MainScaffold(
+                        selectedScreen = AppScreen.PROFILE,
+                        onScreenChange = {
+                            currentScreen = it
+                        },
+                        alertsBadgeCount = unreadCount
+                    ) {
+                        ProfileScreen(
+                            user = user,
+                            activity = activity,
+                            favoritePlaces = placesWithFavorites.filter { it.favorite },
+                            onPlaceClick = { place ->
+                                selectedPlace = place
+                            },
+                            onEditProfile = {
+                                showEditProfile = true
+                            },
+                            onAddEnvironment = {
+                                showAddEnvironment = true
+                            },
+                            onLogout = onLogout
+                        )
+                    }
                 }
             }
         }
 
         AppScreen.ALL_PLACES -> {
             AllPlacesScreen(
-                places = placesWithForecast,
+                places = placesWithFavorites,
                 onBack = {
                     currentScreen = AppScreen.HOME
                 },
                 onPlaceClick = { place ->
                     selectedPlace = place
-                }
+                },
+                onFavoriteChange = onFavoriteChange
             )
         }
     }
