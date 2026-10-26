@@ -19,7 +19,7 @@ A proposta é permitir que os usuários consultem a situação dos espaços e es
 
 ---
 
-##  Objeyivo
+##  Objetivo
 
 Desenvolver uma solução capaz de:
 
