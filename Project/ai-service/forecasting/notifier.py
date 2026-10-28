@@ -36,14 +36,12 @@ from .service import parse_now, run_forecast
 
 logger = logging.getLogger("flowcampus.notifier")
 
-# Têm que ser iguais aos do app (NotificationsPush.kt) e do tools/notify.py
 TOPIC = "alerts"
 CHANNEL_ID = "flowcampus_alerts"
 
 NOTIFICATIONS_COLLECTION = "notifications"
 STATE_COLLECTION = "notification_state"
 
-# --- Regras (ajuste aqui) -------------------------------------------------
 HIGH_AT = 70                 # % a partir da qual a lotação é "alta"
 LOW_AT = 40                  # abaixo disso a lotação é "baixa"
 EMPTY_AT = 25                # abaixo disso o ambiente está "vazio"
@@ -64,11 +62,8 @@ def level_for(percent: int) -> str:
     return "LOW"
 
 
-# --------------------------------------------------------------------------
-# Estado: lembra o que já foi avisado (para não repetir a cada rodada)
-# --------------------------------------------------------------------------
+
 class StateStore:
-    """Guarda o estado de cada ambiente. Sem banco (db=None), guarda só na memória."""
 
     def __init__(self, db=None):
         self.db = db
@@ -99,16 +94,13 @@ class StateStore:
 
 
 def cooled_down(state: dict, kind: str, now: datetime) -> bool:
-    """True se já passou tempo suficiente desde o último aviso desse tipo."""
     last = state.get("lastSent", {}).get(kind)
     if last is None:
         return True
     return now - last >= timedelta(minutes=COOLDOWN_MINUTES)
 
 
-# --------------------------------------------------------------------------
-# Envio: grava a notificação no Firestore e manda o push
-# --------------------------------------------------------------------------
+
 class Sender:
     def __init__(self, db, dry_run: bool):
         self.db = db
@@ -134,7 +126,6 @@ class Sender:
         })
         logger.info("Notificação criada (%s): %s", doc_ref.id, message["title"])
 
-        # Se o push falhar, a notificação continua na lista do app
         try:
             messaging.send(messaging.Message(
                 topic=TOPIC,
@@ -150,9 +141,6 @@ class Sender:
             logger.exception("O push não foi enviado (a notificação foi gravada)")
 
 
-# --------------------------------------------------------------------------
-# Leitura da ocupação atual
-# --------------------------------------------------------------------------
 def read_current(settings: Settings, db, now: datetime) -> Dict[str, dict]:
     """Última leitura (até agora) de cada ambiente, dentro da janela recente."""
     start = now - timedelta(hours=RECENT_HOURS)
@@ -181,16 +169,12 @@ def read_current(settings: Settings, db, now: datetime) -> Dict[str, dict]:
     return latest
 
 
-# --------------------------------------------------------------------------
-# Regras
-# --------------------------------------------------------------------------
 def current_rules(reading: dict, state: dict) -> Tuple[List[Tuple[str, dict]], dict]:
-    """Avisos baseados na ocupação de agora. Só avisa quando algo MUDA."""
     name = str(reading["environmentName"])
     percent = int(round(float(reading["occupancyPercent"])))
     wait = float(reading.get("waitMinutes") or 0)
     level = level_for(percent)
-    known = bool(state)          # já vimos esse ambiente antes?
+    known = bool(state)
 
     found: List[Tuple[str, dict]] = []
 
@@ -222,7 +206,6 @@ def current_rules(reading: dict, state: dict) -> Tuple[List[Tuple[str, dict]], d
 
 def forecast_rule(forecast: dict, current_percent: int, state: dict,
                   now: datetime) -> Optional[Tuple[dict, dict]]:
-    """Aviso baseado na previsão da IA: pico de lotação nas próximas horas."""
     limit = now + timedelta(hours=FORECAST_HORIZON_HOURS)
     points = [p for p in forecast["points"]
               if now < datetime.fromisoformat(p["timestamp"]) <= limit]
@@ -232,11 +215,10 @@ def forecast_rule(forecast: dict, current_percent: int, state: dict,
     peak = max(points, key=lambda p: p["predictedOccupancyPercent"])
     percent = peak["predictedOccupancyPercent"]
 
-    # Só avisa se vai lotar e o ambiente ainda NÃO está lotado agora
     if percent < HIGH_AT or current_percent >= HIGH_AT:
         return None
 
-    key = peak["timestamp"][:13]            # "2026-10-12T14": um aviso por pico
+    key = peak["timestamp"][:13]
     if state.get("forecastKey") == key:
         return None
 
@@ -250,9 +232,6 @@ def forecast_rule(forecast: dict, current_percent: int, state: dict,
     return message, {"forecastKey": key}
 
 
-# --------------------------------------------------------------------------
-# Uma rodada
-# --------------------------------------------------------------------------
 def run_once(settings: Settings, store: StateStore, sender: Sender,
              now: datetime, with_forecast: bool) -> int:
     in_active_hours = ACTIVE_FROM_HOUR <= now.hour < ACTIVE_UNTIL_HOUR
@@ -333,10 +312,6 @@ def run_forecast_step(settings: Settings, store: StateStore, sender: Sender,
 
     return sent
 
-
-# --------------------------------------------------------------------------
-# Linha de comando
-# --------------------------------------------------------------------------
 def main() -> None:
     parser = argparse.ArgumentParser(description="Notificações automáticas do FlowCampus")
     parser.add_argument("--loop", action="store_true", help="repete sem parar")
@@ -374,7 +349,7 @@ def main() -> None:
         except Exception:
             logger.exception("Falha na rodada")
         if due:
-            last_forecast = time.time()       # mesmo se falhar: não insiste e gasta cota
+            last_forecast = time.time()
 
         if not args.loop:
             break

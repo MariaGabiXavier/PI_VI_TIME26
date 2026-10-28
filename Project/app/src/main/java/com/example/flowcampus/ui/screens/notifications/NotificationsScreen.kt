@@ -32,6 +32,7 @@ import com.example.flowcampus.ui.screens.home.GrayText
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.util.Date
+import com.example.flowcampus.ui.theme.OutfitFontFamily
 
 @Composable
 fun rememberCurrentUserId(): String? {
@@ -233,7 +234,8 @@ fun NotificationsScreen(
             Text(
                 text = "Notificações",
                 color = DarkText,
-                fontSize = 24.sp,
+                fontFamily = OutfitFontFamily,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold
             )
 
@@ -241,6 +243,7 @@ fun NotificationsScreen(
                 text = "Limpar",
                 color = Blue,
                 fontSize = 14.sp,
+                fontFamily = OutfitFontFamily,
                 modifier = Modifier.clickable {
                     userId?.let { id ->
                         scope.launch {

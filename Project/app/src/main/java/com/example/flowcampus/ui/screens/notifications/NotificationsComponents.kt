@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.example.flowcampus.ui.screens.home.Blue
 import com.example.flowcampus.ui.screens.home.DarkText
 import com.example.flowcampus.ui.screens.home.GrayText
+import com.example.flowcampus.ui.theme.OutfitFontFamily
 
 @Composable
 fun NotificationFilterChip(
@@ -63,6 +64,7 @@ fun NotificationFilterChip(
                 DarkText
             },
 
+            fontFamily = OutfitFontFamily,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
 
@@ -121,8 +123,9 @@ fun NotificationCard(
                 Text(
                     text = notification.title,
                     color = DarkText,
+                    fontFamily = OutfitFontFamily,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -130,7 +133,9 @@ fun NotificationCard(
                 Text(
                     text = notification.description,
                     color = GrayText,
-                    fontSize = 13.sp
+                    fontFamily = OutfitFontFamily,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -138,11 +143,11 @@ fun NotificationCard(
                 Text(
                     text = notification.time,
                     color = Color(0xFF9CA3B5),
+                    fontFamily = OutfitFontFamily,
                     fontSize = 11.sp
                 )
             }
-
-            // Bolinha azul, notificação ainda não vista
+            
             if (isUnread) {
 
                 Spacer(modifier = Modifier.width(8.dp))
