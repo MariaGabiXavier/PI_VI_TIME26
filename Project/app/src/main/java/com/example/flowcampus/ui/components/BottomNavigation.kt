@@ -79,7 +79,8 @@ fun BottomNavigation(
                 selected = selectedScreen == AppScreen.ALERTS,
                 onClick = {
                     onScreenChange(AppScreen.ALERTS)
-                }
+                },
+                showBadge = alertsBadgeCount > 0
             )
 
             BottomNavigationItem(

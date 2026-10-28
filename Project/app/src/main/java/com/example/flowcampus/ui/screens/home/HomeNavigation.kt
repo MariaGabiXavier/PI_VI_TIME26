@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 
 @Composable
 fun AllPlacesScreen(
@@ -117,7 +119,8 @@ fun BottomNavigationItem(
     icon: ImageVector,
     label: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    showBadge: Boolean = false
 ) {
 
     Column(
@@ -134,20 +137,20 @@ fun BottomNavigationItem(
 
         verticalArrangement = Arrangement.Center
     ) {
-
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-
-            tint = if (selected) {
-                Blue
-            } else {
-                Color(0xFF9CA3B5)
-            },
-
-            modifier = Modifier.size(21.dp)
-        )
-
+        BadgedBox(
+            badge = {
+                if (showBadge) {
+                    Badge(containerColor = Blue)
+                }
+            }
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (selected) Blue else Color(0xFF9CA3B5),
+                modifier = Modifier.size(21.dp)
+            )
+        }
         Spacer(
             modifier = Modifier.height(3.dp)
         )
