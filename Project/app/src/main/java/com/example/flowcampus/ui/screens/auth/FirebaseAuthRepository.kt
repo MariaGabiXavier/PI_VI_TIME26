@@ -65,6 +65,7 @@ class FirebaseAuthRepository(
         profile
     }
 
+
     // ---------- Login: autentica e busca o perfil no Firestore ----------
 
     override suspend fun login(
@@ -79,6 +80,8 @@ class FirebaseAuthRepository(
         AuthSession.set(profile)
         profile
     }
+
+
 
     // ---------- Sessão salva (login automático) ----------
 
@@ -185,4 +188,8 @@ class FirebaseAuthRepository(
 
         else -> message ?: "Algo deu errado. Tente novamente."
     }
+    override suspend fun resetPassword(email: String, newPassword: String): Result<Unit> = runCatching {
+        auth.sendPasswordResetEmail(email).await()
+    }
 }
+

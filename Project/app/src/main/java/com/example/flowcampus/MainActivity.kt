@@ -13,6 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.flowcampus.ui.screens.auth.FirebaseAuthRepository
+import com.example.flowcampus.ui.screens.auth.ForgotPasswordScreen
 import com.example.flowcampus.ui.screens.auth.LoginScreen
 import com.example.flowcampus.ui.screens.auth.RegisterScreen
 import com.example.flowcampus.ui.screens.home.HomeScreen
@@ -62,9 +63,18 @@ class MainActivity : ComponentActivity() {
                                     navController.navigate("home") {
                                         popUpTo("login") { inclusive = true }
                                     }
+                                },onNavigateToForgotPassword = {
+                                    navController.navigate("forgot_password")
                                 },
                                 onNavigateToRegister = {
                                     navController.navigate("register")
+                                }
+                            )
+                        }
+                        composable("forgot_password") {
+                            ForgotPasswordScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
                                 }
                             )
                         }

@@ -18,6 +18,8 @@ interface AuthRepository {
         role: UserRole
     ): Result<UserProfile>
 
+    suspend fun resetPassword(email: String, newPassword: String): Result<Unit>
+
     /** Há uma sessão ativa salva no dispositivo? (não faz chamada de rede) */
     fun isLoggedIn(): Boolean
 
@@ -47,6 +49,11 @@ object FakeAuthRepository : AuthRepository {
         val profile = UserProfile("fake", name, email, role)
         AuthSession.set(profile)
         return Result.success(profile)
+    }
+
+    override suspend fun resetPassword(email: String, newPassword: String): Result<Unit> {
+        // Implementação simulada para testes (retorna sucesso por padrão)
+        return Result.success(Unit)
     }
 
     override fun isLoggedIn(): Boolean = false
