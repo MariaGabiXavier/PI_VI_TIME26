@@ -1,0 +1,4 @@
+opencv-python==5.0.0.93
+numpy==2.4.2
+ultralytics==8.4.202
+firebase-admin==7.7.0

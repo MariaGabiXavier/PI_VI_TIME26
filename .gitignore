@@ -19,3 +19,5 @@ local.properties
 serviceAccountKey.json
 .venv/
 __pycache__/
+# Credenciais privadas do Firebase
+**/flowcampus-admin.json
