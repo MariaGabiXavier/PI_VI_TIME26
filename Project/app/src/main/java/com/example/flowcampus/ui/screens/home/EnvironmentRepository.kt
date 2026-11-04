@@ -78,13 +78,20 @@ class EnvironmentRepository(
                                 }.getOrNull()
                             } ?: PlaceIcon.CLASSROOM
 
+                        val capacity = (document.get("capacity") as? Number)
+                            ?.toInt()
+                            ?.coerceAtLeast(1)
+                            ?: 40
+
                         CampusPlace(
                             name = name,
                             people = 0,
                             minutes = 0,
                             status = "Sem dados",
                             iconType = category,
-                            favorite = false
+                            favorite = false,
+                            capacity = capacity,
+                            firestoreId = document.id
                         )
                     }
 

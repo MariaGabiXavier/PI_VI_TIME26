@@ -33,7 +33,8 @@ data class CampusPlace(
     val status: String,
     val iconType: PlaceIcon,
     val favorite: Boolean,
-    val capacity: Int = 40
+    val capacity: Int = 40,
+    val firestoreId: String = ""
 )
 
 enum class PlaceIcon {

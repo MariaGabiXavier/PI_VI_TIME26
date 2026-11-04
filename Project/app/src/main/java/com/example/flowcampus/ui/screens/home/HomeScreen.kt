@@ -1,5 +1,6 @@
 package com.example.flowcampus.ui.screens.home
 
+import kotlinx.coroutines.delay
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -47,6 +48,18 @@ fun HomeScreen(
         AiRepository()
     }
 
+    val cameraReadingRepository = remember {
+    CameraReadingRepository()
+}
+
+    val cameraReadingsState = remember {
+        mutableStateOf<Map<String, CameraReading?>>(emptyMap())
+    }
+
+    var currentTime by remember {
+        mutableStateOf(System.currentTimeMillis())
+    }
+
     val profileRepository = remember {
         ProfileRepository()
     }
@@ -77,21 +90,54 @@ fun HomeScreen(
             }
     }
 
-    
-    val placesWithForecast = places.map { place ->
-        // Gera dados simulados para ambientes sem previsão da IA.
-        val simulatedPlace = simulatePlace(place)
+    LaunchedEffect(Unit) {
+    while (true) {
+        currentTime = System.currentTimeMillis()
+        delay(5_000)
+    }
+}
 
+    val placesWithForecast = places.map { place ->
+
+    val simulatedPlace = simulatePlace(place)
+
+    // Procura a última leitura da câmera para este ambiente.
+    val cameraReading = cameraReadingsState.value[place.firestoreId]
+
+    val readingTimestamp = cameraReading
+        ?.timestamp
+        ?.toDate()
+        ?.time
+
+    // Considera válida uma leitura de até 90 segundos.
+    val isCameraReadingFresh =
+        readingTimestamp != null &&
+        (currentTime - readingTimestamp) in -30_000L..90_000L
+
+    if (isCameraReadingFresh && cameraReading != null) {
+
+        // PRIORIDADE 1: quantidade real detectada pela câmera.
+        val people = cameraReading.people
+            .coerceIn(0, simulatedPlace.capacity)
+
+        simulatedPlace.copy(
+            people = people,
+            status = occupancyStatus(
+                people = people,
+                capacity = simulatedPlace.capacity
+            )
+        )
+
+    } else {
+
+        // PRIORIDADE 2: previsão da inteligência artificial.
         val prediction = aiForecast
             ?.forEnvironment(place.name)
             ?.points
             ?.firstOrNull()
 
-        if (prediction == null) {
-            // Sem previsão disponível: usa a simulação.
-            simulatedPlace
-        } else {
-            // Com previsão: usa a quantidade prevista pela IA.
+        if (prediction != null) {
+
             val people = prediction.predictedPeople
                 .coerceIn(0, simulatedPlace.capacity)
 
@@ -102,8 +148,14 @@ fun HomeScreen(
                     capacity = simulatedPlace.capacity
                 )
             )
+
+        } else {
+
+            // PRIORIDADE 3: simulação, caso não existam dados.
+            simulatedPlace
         }
     }
+}
 
     val unreadCount = rememberUnreadNotificationsCount()
 
@@ -125,6 +177,41 @@ fun HomeScreen(
             listener.remove()
         }
     }
+
+    DisposableEffect(cameraReadingRepository, places) {
+
+    val listeners = places.mapNotNull { place ->
+
+        val environmentId = place.firestoreId
+
+        if (environmentId.isBlank()) {
+            return@mapNotNull null
+        }
+
+        cameraReadingRepository.listenLatestReading(
+            environmentId = environmentId,
+
+            onUpdate = { reading ->
+                cameraReadingsState.value =
+                    cameraReadingsState.value + (environmentId to reading)
+            },
+
+            onError = { error ->
+                Log.e(
+                    "HomeScreen",
+                    "Erro ao carregar leitura da câmera: $environmentId",
+                    error
+                )
+            }
+        )
+    }
+
+    onDispose {
+        listeners.forEach { listener ->
+            listener.remove()
+        }
+    }
+}
 
     // Favoritos e números do Perfil ficam no documento do usuário
     DisposableEffect(userId) {
