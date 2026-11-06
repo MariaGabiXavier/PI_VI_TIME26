@@ -32,14 +32,23 @@ try:
 
     db = firestore.client()
 
-    ambiente_ref = db.collection("environments").document(
-        AMBIENTE_ID
-    )
+    # Busca todos os ambientes cadastrados no app
+    ambientes = list(db.collection("environments").stream())
 
-    ambiente_doc = ambiente_ref.get()
+    if len(ambientes) == 0:
+        raise Exception("Nenhum ambiente cadastrado no Firebase.")
 
-    if not ambiente_doc.exists:
-        raise Exception("Ambiente nao encontrado no Firebase.")
+    print("Ambientes cadastrados:")
+
+    for i in range(len(ambientes)):
+        nome = ambientes[i].to_dict()["name"]
+        print(f"{i + 1} - {nome}")
+
+    escolha = int(input("Qual ambiente esta camera vai monitorar? "))
+
+    ambiente_doc = ambientes[escolha - 1]
+
+    AMBIENTE_ID = ambiente_doc.id
 
     dados_ambiente = ambiente_doc.to_dict()
 
@@ -73,7 +82,7 @@ print("Modelo carregado com sucesso!")
 #camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 #Camera celular
-URL_CAMERA = "http://192.168.15.30:8080/video"
+URL_CAMERA = input("Endereco da camera (ex: http://192.168.15.30:8080/video): ")
 camera = cv2.VideoCapture(URL_CAMERA)
 
 if not camera.isOpened():
@@ -355,7 +364,7 @@ try:
         )
 
         cv2.imshow(
-            "FlowCampus - Monitoramento",
+            f"FlowCampus - {NOME_AMBIENTE}",
             frame
         )
 

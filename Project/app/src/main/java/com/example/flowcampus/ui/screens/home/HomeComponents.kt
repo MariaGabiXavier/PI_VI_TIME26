@@ -417,7 +417,11 @@ fun CampusStatusCard(
             )
 
             Text(
-                text = "${place.people} pessoas",
+                text = if (place.status == "Sem câmera") {
+                    "Sem câmera"
+                } else {
+                    "${place.people} pessoas"
+                },
                 color = GrayText,
                 fontSize = 9.sp
             )
@@ -443,7 +447,7 @@ fun CampusStatusCard(
                 )
 
                 Text(
-                    text = if (place.status == "Sem dados") {
+                    text = if (place.status == "Sem dados" || place.status == "Sem câmera") {
                         "Sem dados"
                     } else {
                         "${place.minutes} min"
@@ -508,6 +512,11 @@ fun StatusBadge(
         "Médio" -> {
             background = MediumOrange
             textColor = MediumOrangeText
+        }
+
+        "Sem câmera" -> {
+            background = Color(0xFFEDEFF3)
+            textColor = GrayText
         }
 
         else -> {

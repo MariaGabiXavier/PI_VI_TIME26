@@ -99,63 +99,39 @@ fun HomeScreen(
 
     val placesWithForecast = places.map { place ->
 
-    val simulatedPlace = simulatePlace(place)
+        // Última leitura da câmera deste ambiente
+        val cameraReading = cameraReadingsState.value[place.firestoreId]
 
-    // Procura a última leitura da câmera para este ambiente.
-    val cameraReading = cameraReadingsState.value[place.firestoreId]
+        val readingTimestamp = cameraReading
+            ?.timestamp
+            ?.toDate()
+            ?.time
 
-    val readingTimestamp = cameraReading
-        ?.timestamp
-        ?.toDate()
-        ?.time
+        // Leitura válida: de até 90 segundos atrás
+        val isCameraReadingFresh =
+            readingTimestamp != null &&
+                    (currentTime - readingTimestamp) in -30_000L..90_000L
 
-    // Considera válida uma leitura de até 90 segundos.
-    val isCameraReadingFresh =
-        readingTimestamp != null &&
-        (currentTime - readingTimestamp) in -30_000L..90_000L
+        val temCamera = isCameraReadingFresh && cameraReading != null
 
-    if (isCameraReadingFresh && cameraReading != null) {
-
-        // PRIORIDADE 1: quantidade real detectada pela câmera.
-        val people = cameraReading.people
-            .coerceIn(0, simulatedPlace.capacity)
-
-        simulatedPlace.copy(
-            people = people,
-            status = occupancyStatus(
-                people = people,
-                capacity = simulatedPlace.capacity
-            )
-        )
-
-    } else {
-
-        // PRIORIDADE 2: previsão da inteligência artificial.
-        val prediction = aiForecast
-            ?.forEnvironment(place.name)
-            ?.points
-            ?.firstOrNull()
-
-        if (prediction != null) {
-
-            val people = prediction.predictedPeople
-                .coerceIn(0, simulatedPlace.capacity)
-
-            simulatedPlace.copy(
-                people = people,
-                status = occupancyStatus(
-                    people = people,
-                    capacity = simulatedPlace.capacity
-                )
-            )
-
+        // Com câmera: número que a câmera está vendo.
+        // Sem câmera: 0 (a tela mostra "Sem câmera").
+        val people = if (temCamera) {
+            (cameraReading?.people ?: 0).coerceIn(0, place.capacity)
         } else {
-
-            // PRIORIDADE 3: simulação, caso não existam dados.
-            simulatedPlace
+            0
         }
+
+        place.copy(
+            people = people,
+            minutes = 0,
+            status = if (temCamera) {
+                occupancyStatus(people, place.capacity)
+            } else {
+                "Sem câmera"
+            }
+        )
     }
-}
 
     val unreadCount = rememberUnreadNotificationsCount()
 

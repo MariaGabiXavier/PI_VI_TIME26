@@ -126,7 +126,7 @@ fun PlaceDetailScreen(
                 ) {
 
                     Text(
-                        text = place.people.toString(),
+                        text = if (place.status == "Sem câmera") "--" else place.people.toString(),
                         color = DarkText,
                         fontSize = 43.sp,
                         fontWeight = FontWeight.Bold,
@@ -138,7 +138,7 @@ fun PlaceDetailScreen(
                     )
 
                     Text(
-                        text = "pessoas agora",
+                        text = if (place.status == "Sem câmera") "sem câmera neste ambiente" else "pessoas agora",
                         color = GrayText,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(top = 12.dp)
