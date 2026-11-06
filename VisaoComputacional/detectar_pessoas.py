@@ -37,7 +37,12 @@ except Exception as erro:
 # ABRIR CAMERA
 # ==========================================
 
-camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+#camera do PC
+#camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+#Camera do celular
+URL_CAMERA = "http://192.168.15.30:8080/video"
+camera = cv2.VideoCapture(URL_CAMERA)
 
 if not camera.isOpened():
     print("Erro: nao foi possivel acessar a webcam.")

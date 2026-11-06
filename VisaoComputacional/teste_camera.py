@@ -2,7 +2,11 @@
 import cv2
 
 # Acessar a câmera padrão do notebook
-camera = cv2.VideoCapture(0)
+#camera = cv2.VideoCapture(0)
+
+# Acessar a câmera do celular
+URL_CAMERA = "http://192.168.15.30:8080/video"
+camera = cv2.VideoCapture(URL_CAMERA)
 
 if not camera.isOpened():
     print("Erro: não foi possível acessar a câmera.")
