@@ -47,13 +47,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.flowcampus.ai.AiEnvironmentForecast
 
 @Composable
 fun PlaceDetailScreen(
     place: CampusPlace,
+    forecast: AiEnvironmentForecast?,
     onBack: () -> Unit
 ) {
-    val data = getMockDetail(place)
+    val data = getPlaceDetail(place, forecast)
 
     Column(
         modifier = Modifier
@@ -482,56 +484,50 @@ fun AIRecommendationCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-
-                Text(
-                    text = buildAnnotatedString {
-
-                        append("A lotação cairá para ")
-
-                        withStyle(
-                            SpanStyle(
-                                color = Color(0xFF13A35B),
-                                fontWeight = FontWeight.Bold
-                            )
-                        ) {
-
-                            append(
-                                "Baixo (~${data.recommendationPeople} pessoas)"
-                            )
-                        }
-
-                        append(" às ")
-
-                        withStyle(
-                            SpanStyle(
-                                color = DarkText,
-                                fontWeight = FontWeight.Bold
-                            )
-                        ) {
-
-                            append(
-                                data.recommendationTime
-                            )
-                        }
-                    },
-
-                    color = GrayText,
-                    fontSize = 9.sp,
-                    lineHeight = 13.sp
-                )
-
                 
-                Text(
-                    text = if (data.minutesUntilRecommendation == 0) {
-                        "Este é o último horário disponível na simulação."
-                    } else {
-                        "Horário sugerido em aproximadamente " +
-                            "${data.minutesUntilRecommendation} minutos."
-                    },
-                    color = GrayText,
-                    fontSize = 9.sp,
-                    lineHeight = 13.sp
-                )
+            Text(
+                text = buildAnnotatedString {
+                    append("A lotação cairá para ")
+
+                    withStyle(
+                        SpanStyle(
+                            color = Color(0xFF13A35B),
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append(
+                            "${data.recommendationStatus} (~${data.recommendationPeople} pessoas)"
+                        )
+                    }
+
+                    append(" às ")
+
+                    withStyle(
+                        SpanStyle(
+                            color = DarkText,
+                            fontWeight = FontWeight.Bold
+                        )
+                    ) {
+                        append(data.recommendationTime)
+                    }
+                },
+                color = GrayText,
+                fontSize = 9.sp,
+                lineHeight = 13.sp
+            )
+
+            Text(
+                text = if (data.recommendationTime == "--") {
+                    "Não há previsão disponível para este ambiente."
+                } else {
+                    "Horário sugerido em aproximadamente " +
+                        "${data.minutesUntilRecommendation} minutos."
+                },
+                color = GrayText,
+                fontSize = 9.sp,
+                lineHeight = 13.sp
+            )
+
             }
         }
     }

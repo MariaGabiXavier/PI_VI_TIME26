@@ -10,6 +10,9 @@ import com.example.flowcampus.ui.theme.AppNavy
 import com.example.flowcampus.ui.theme.AppRed
 import java.time.LocalTime
 import kotlin.math.roundToInt
+import com.example.flowcampus.ai.AiEnvironmentForecast
+import java.time.Duration
+import java.time.OffsetDateTime
 
 val BackgroundColor = AppBackground
 val Blue = AppBlue
@@ -46,17 +49,6 @@ enum class PlaceIcon {
     CLASSROOM
 }
 
-data class PlaceDetailMock(
-    val people: Int,
-    val waitingTime: Int,
-    val peakTime: String,
-    val capacity: Int,
-    val recommendationPeople: Int,
-    val recommendationTime: String,
-    val hourlyPeople: List<Int> = emptyList(),
-    val hours: List<Int> = emptyList(),
-    val minutesUntilRecommendation: Int = 0
-)
 
 private data class SimulationProfile(
     val capacity: Int,
@@ -143,63 +135,126 @@ fun simulatePlace(
 }
 
 
-fun getMockDetail(
+data class PlaceDetailMock(
+    val people: Int,
+    val waitingTime: Int,
+    val peakTime: String,
+    val capacity: Int,
+    val recommendationPeople: Int,
+    val recommendationTime: String,
+    val hourlyPeople: List<Int> = emptyList(),
+    val hours: List<Int> = emptyList(),
+    val minutesUntilRecommendation: Int = 0,
+    val recommendationStatus: String = "Sem previsão"
+)
+
+private fun parseForecastTime(value: String): OffsetDateTime? {
+    return try {
+        OffsetDateTime.parse(value)
+    } catch (e: Exception) {
+        null
+    }
+}
+
+fun getPlaceDetail(
     place: CampusPlace,
-    now: LocalTime = LocalTime.now()
+    forecast: AiEnvironmentForecast?,
+    now: OffsetDateTime = OffsetDateTime.now()
 ): PlaceDetailMock {
-    val profile = profileFor(place)
 
-    // Dados do gráfico: ocupação simulada a cada duas horas.
-    val hours = (8..22 step 2).toList()
-    val values = hours.map { hour ->
-        simulatedPeopleAt(profile, hour)
+    val capacity = place.capacity.coerceAtLeast(1)
+
+    // Sem previsão disponível: não inventa dados.
+    if (forecast == null || forecast.points.isEmpty()) {
+        return PlaceDetailMock(
+            people = place.people,
+            waitingTime = 0,
+            peakTime = "--",
+            capacity = capacity,
+            recommendationPeople = 0,
+            recommendationTime = "--"
+        )
     }
 
-    // Maior ocupação entre os horários apresentados no gráfico.
-    val peakIndex = values.indices.maxByOrNull { values[it] }
-    val peakHour = peakIndex?.let { hours[it] } ?: profile.peakHour
-
-    // Procura o próximo horário com ocupação baixa.
-    val futureHours = ((now.hour + 1)..23).toList()
-
-    val lowOccupancyHour = futureHours.firstOrNull { hour ->
-        simulatedPeopleAt(profile, hour) <= profile.capacity * 0.40
-    }
-
-    // Se não houver horário de baixa ocupação, escolhe o menos movimentado
-    // entre os horários futuros, em vez de retornar zero indevidamente.
-    val recommendationHour = lowOccupancyHour
-        ?: futureHours.minByOrNull { hour ->
-            simulatedPeopleAt(profile, hour)
+    val validPoints = forecast.points.mapNotNull { point ->
+        val timestamp = parseForecastTime(point.timestamp)
+        if (timestamp != null) {
+            point to timestamp
+        } else {
+            null
         }
-        ?: now.hour
-
-    val recommendationPeople =
-        simulatedPeopleAt(profile, recommendationHour)
-
-    val minutesUntil = if (recommendationHour == now.hour) {
-        0
-    } else {
-        (
-            (recommendationHour - now.hour) * 60 - now.minute
-        ).coerceAtLeast(1)
     }
 
-    val waitingTime = minutesUntil
+    if (validPoints.isEmpty()) {
+        return PlaceDetailMock(
+            people = place.people,
+            waitingTime = 0,
+            peakTime = "--",
+            capacity = capacity,
+            recommendationPeople = 0,
+            recommendationTime = "--"
+        )
+    }
+
+    // Horários previstos para hoje.
+    val todayPoints = validPoints
+        .filter { it.second.toLocalDate() == now.toLocalDate() }
+        .sortedBy { it.second }
+
+    // Gráfico: previsão a cada duas horas, das 08h às 22h.
+    val chartPoints = todayPoints.filter { (_, time) ->
+        time.hour in 8..22 && time.hour % 2 == 0
+    }
+
+    val hours = chartPoints.map { it.second.hour }
+    val hourlyPeople = chartPoints.map { it.first.predictedPeople }
+
+    // Horário de maior ocupação previsto pela IA.
+    val peakPoint = validPoints.maxByOrNull {
+        it.first.predictedOccupancyPercent
+    }
+
+    val peakTime = peakPoint?.second?.let {
+        "%02d:%02d".format(it.hour, it.minute)
+    } ?: "--"
+
+    // Melhor horário futuro previsto pela IA.
+    val bestPoint = validPoints
+        .filter { it.second.isAfter(now) }
+        .minByOrNull { it.first.predictedOccupancyPercent }
+
+    val recommendationTime = bestPoint?.second?.let {
+        "%02d:%02d".format(it.hour, it.minute)
+    } ?: "--"
+
+    val recommendationPeople = bestPoint?.first?.predictedPeople ?: 0
+
+    val recommendationStatus = bestPoint?.first?.predictedOccupancyPercent?.let {
+        when {
+            it >= 70 -> "Alto"
+            it >= 40 -> "Médio"
+            else -> "Baixo"
+        }
+    } ?: "Sem previsão"
+
+    // Tempo até o melhor horário.
+    val waitingTime = bestPoint?.second?.let {
+        Duration.between(now, it).toMinutes()
+            .coerceAtLeast(0)
+            .toInt()
+    } ?: 0
 
     return PlaceDetailMock(
         people = place.people,
         waitingTime = waitingTime,
-        peakTime = String.format("%02d:00", peakHour),
-        capacity = profile.capacity,
+        peakTime = peakTime,
+        capacity = capacity,
         recommendationPeople = recommendationPeople,
-        recommendationTime = String.format(
-            "%02d:00",
-            recommendationHour
-        ),
-        hourlyPeople = values,
+        recommendationTime = recommendationTime,
+        hourlyPeople = hourlyPeople,
         hours = hours,
-        minutesUntilRecommendation = minutesUntil
+        minutesUntilRecommendation = waitingTime,
+        recommendationStatus = recommendationStatus
     )
 }
 

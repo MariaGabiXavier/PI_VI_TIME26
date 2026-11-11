@@ -394,11 +394,18 @@ fun HomeScreen(
     }
 
     selectedPlace?.let { place ->
-        PlaceDetailScreen(
-            place = place,
-            onBack = {
-                selectedPlace = null
-            }
-        )
+
+    val placeForecast = aiForecast?.forecasts?.firstOrNull {
+        it.environmentId == place.firestoreId ||
+            it.environmentName.equals(place.name, ignoreCase = true)
     }
+
+    PlaceDetailScreen(
+        place = place,
+        forecast = placeForecast,
+        onBack = {
+            selectedPlace = null
+        }
+    )
+}
 }
