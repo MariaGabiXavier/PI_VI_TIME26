@@ -79,11 +79,11 @@ print("Modelo carregado com sucesso!")
 # ==========================================
 
 #camera do PC
-#camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
 #Camera celular
-URL_CAMERA = input("Endereco da camera (ex: http://192.168.15.30:8080/video): ")
-camera = cv2.VideoCapture(URL_CAMERA)
+#URL_CAMERA = input("Endereco da camera (ex: http://192.168.15.30:8080/video): ")
+#camera = cv2.VideoCapture(URL_CAMERA)
 
 if not camera.isOpened():
     print("Erro ao acessar a webcam!")

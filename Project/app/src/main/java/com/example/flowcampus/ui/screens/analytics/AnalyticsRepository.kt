@@ -7,16 +7,8 @@ import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import android.util.Log
 
-/**
- * Lê do Firestore os dados da tela Análises.
- *
- *   daily_stats/{ambienteId}_{yyyy-MM-dd}   -> resumo diário de cada ambiente
- *   ai_insights/{id}                        -> frases da seção "Insights da IA"
- *
- * Os dois são "listeners": quando o documento muda no Firestore
- * (ex.: a IA grava um insight novo), a tela atualiza sozinha.
- */
 class AnalyticsRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
@@ -77,9 +69,77 @@ class AnalyticsRepository(
                 onUpdate(insights)
             }
     }
+    fun listenCameraAreas(
+        onUpdate: (List<CameraArea>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+
+        return db.collection("camera_readings")
+            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .addSnapshotListener { readingsSnapshot, error ->
+
+                if (error != null) {
+                    Log.e("AnalyticsRepository", "Erro ao buscar camera_readings", error)
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
+                val latestReadings = readingsSnapshot?.documents
+                    .orEmpty()
+                    .mapNotNull { document ->
+
+                        val environmentId =
+                            document.getString("environmentId")
+                                ?: return@mapNotNull null
+
+                        CameraArea(
+                            environmentId = environmentId,
+                            name = document.getString("environmentName")
+                                ?: "Ambiente",
+                            people = (document.get("people") as? Number)
+                                ?.toInt() ?: 0,
+                            capacity = 1
+                        )
+                    }
+                    .distinctBy { it.environmentId }
+
+                Log.d(
+                    "AnalyticsRepository",
+                    "Leituras de câmera encontradas: ${latestReadings.size}"
+                )
+
+                db.collection("environments")
+                    .get()
+                    .addOnSuccessListener { environmentsSnapshot ->
+
+                        val capacities = environmentsSnapshot.documents
+                            .associate { document ->
+                                document.id to (
+                                        (document.get("capacity") as? Number)
+                                            ?.toInt() ?: 1
+                                        )
+                            }
+
+                        val areas = latestReadings.map { reading ->
+                            reading.copy(
+                                capacity = capacities[reading.environmentId] ?: 1
+                            )
+                        }
+
+                        onUpdate(areas)
+                    }
+                    .addOnFailureListener { exception ->
+                        Log.e(
+                            "AnalyticsRepository",
+                            "Erro ao buscar capacidades dos ambientes",
+                            exception
+                        )
+                        onError(exception)
+                    }
+            }
+    }
 }
 
-/** "2026-10-10" de hoje (daysBack = 0) ou de N dias atrás. */
 private fun dateKey(daysBack: Int): String {
 
     val calendar = Calendar.getInstance()
@@ -100,10 +160,6 @@ private fun DocumentSnapshot.toDailyStat(): DailyStat? {
     )
 }
 
-/**
- * Documento de `ai_insights` -> insight da tela (a conversao fica em
- * AnalyticsInsightMapper.kt, compartilhada com a IA).
- */
 private fun DocumentSnapshot.toInsight(): AnalyticsInsight? {
 
     val text = getString("text") ?: return null

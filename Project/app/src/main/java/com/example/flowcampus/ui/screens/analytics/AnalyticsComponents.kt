@@ -139,40 +139,84 @@ fun SummaryStatCard(
 
 @Composable
 fun AreaComparisonCard(
-    areas: List<AreaComparison>
+    areas: List<CameraArea>
 ) {
-
     Card(
         modifier = Modifier.fillMaxWidth(),
-
         shape = RoundedCornerShape(16.dp),
-
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
-
         elevation = CardDefaults.cardElevation(
             defaultElevation = 1.dp
         )
     ) {
-
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-
             areas.forEachIndexed { index, area ->
 
-                AreaComparisonRow(
-                    area = area
-                )
+                CameraAreaRow(area)
 
                 if (index != areas.lastIndex) {
-
                     Spacer(
                         modifier = Modifier.height(16.dp)
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun CameraAreaRow(
+    area: CameraArea
+) {
+    Column {
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = area.name,
+                color = AppNavy,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = "${area.people} pessoas",
+                color = AppNavy,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(
+            modifier = Modifier.height(6.dp)
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(50))
+                .background(AnalyticsTrack)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(
+                        fraction = (area.people.toFloat() /
+                                area.capacity.coerceAtLeast(1))
+                            .coerceIn(0f, 1f)
+                    )
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(50))
+                    .background(
+                        occupancyColor(area.occupancyPercent)
+                    )
+            )
         }
     }
 }

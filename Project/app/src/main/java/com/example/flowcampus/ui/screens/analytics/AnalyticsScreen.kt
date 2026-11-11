@@ -75,6 +75,10 @@ fun AnalyticsScreen() {
         mutableStateOf<List<AnalyticsInsight>>(emptyList())
     }
 
+    var cameraAreas by remember {
+        mutableStateOf<List<CameraArea>?>(null)
+    }
+
     // Recarrega sempre que o usuário troca Hoje / Semana / Mês
     DisposableEffect(selectedPeriod) {
 
@@ -93,6 +97,26 @@ fun AnalyticsScreen() {
                     error
                 )
                 hasError = true
+            }
+        )
+
+        onDispose {
+            listener.remove()
+        }
+    }
+
+    DisposableEffect(repository) {
+
+        val listener = repository.listenCameraAreas(
+            onUpdate = { areas ->
+                cameraAreas = areas
+            },
+            onError = { error ->
+                Log.e(
+                    "AnalyticsScreen",
+                    "Erro ao carregar contagem das câmeras",
+                    error
+                )
             }
         )
 
@@ -236,7 +260,7 @@ fun AnalyticsScreen() {
             else -> {
 
                 val stats = buildSummaryStats(currentStats)
-                val areas = buildAreaComparisons(currentStats)
+                val areas = cameraAreas.orEmpty()
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -252,24 +276,42 @@ fun AnalyticsScreen() {
                         )
                     }
                 }
+            }
+        }
 
-                Spacer(
-                    modifier = Modifier.height(24.dp)
+        // Comparação entre áreas: dados em tempo real das câmeras
+        Spacer(
+            modifier = Modifier.height(24.dp)
+        )
+
+        Text(
+            text = "Pessoas por Ambiente",
+            color = AppNavy,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(
+            modifier = Modifier.height(12.dp)
+        )
+
+        when {
+            cameraAreas == null -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = AppBlue
                 )
+            }
 
-                Text(
-                    text = "Comparação entre Áreas",
-                    color = AppNavy,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold
+            cameraAreas!!.isEmpty() -> {
+                AnalyticsMessageCard(
+                    message = "Ainda não há leituras das câmeras para os ambientes."
                 )
+            }
 
-                Spacer(
-                    modifier = Modifier.height(12.dp)
-                )
-
+            else -> {
                 AreaComparisonCard(
-                    areas = areas
+                    areas = cameraAreas!!
                 )
             }
         }
@@ -281,7 +323,7 @@ fun AnalyticsScreen() {
             )
 
             Text(
-                text = "Insights da IA",
+                text = "Pessoas por Ambiente",
                 color = AppNavy,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold

@@ -24,6 +24,21 @@ enum class AnalyticsPeriod {
  * Resumo de UM dia de UM ambiente.
  * Vem do Firestore: coleção `daily_stats`.
  */
+
+data class CameraArea(
+    val environmentId: String,
+    val name: String,
+    val people: Int,
+    val capacity: Int
+) {
+    val occupancyPercent: Int
+        get() = if (capacity > 0) {
+            ((people.toDouble() / capacity) * 100).toInt()
+        } else {
+            0
+        }
+}
+
 data class DailyStat(
     val environmentName: String,
     val totalVisitors: Long,
@@ -67,7 +82,6 @@ fun occupancyColor(percent: Int): Color {
     }
 }
 
-/** Ocupação média de cada ambiente no período, da mais cheia para a mais vazia. */
 fun buildAreaComparisons(
     stats: List<DailyStat>
 ): List<AreaComparison> {
@@ -91,14 +105,12 @@ fun buildAreaComparisons(
         .sortedByDescending { it.value }
 }
 
-/** Os 3 cards do topo: visitantes, espera média e área mais cheia. */
 fun buildSummaryStats(
     stats: List<DailyStat>
 ): List<SummaryStat> {
 
     val totalVisitors = stats.sumOf { it.totalVisitors }
 
-    // espera média ponderada pelo número de visitantes
     val averageWait = if (totalVisitors > 0) {
         stats.sumOf { it.avgWaitMinutes * it.totalVisitors } / totalVisitors
     } else {
