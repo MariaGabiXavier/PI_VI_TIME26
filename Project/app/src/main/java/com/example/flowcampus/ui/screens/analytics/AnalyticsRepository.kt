@@ -110,6 +110,7 @@ private fun DocumentSnapshot.toDailyStat(): DailyStat? {
         environmentName = name,
         totalVisitors = getLong("totalVisitors") ?: 0L,
         avgOccupancyPercent = getLong("avgOccupancyPercent")?.toInt() ?: 0,
+        peakOccupancyPercent = getLong("peakOccupancyPercent")?.toInt() ?: 0,
         avgWaitMinutes = getDouble("avgWaitMinutes") ?: 0.0
     )
 }

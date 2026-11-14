@@ -54,6 +54,10 @@ fun AnalyticsScreen() {
         mutableStateOf(AnalyticsPeriod.HOJE)
     }
 
+    var selectedComparisonMode by remember {
+        mutableStateOf(AreaComparisonMode.OCCUPANCY)
+    }
+
     var dailyStats by remember {
         mutableStateOf<List<DailyStat>?>(null)
     }
@@ -226,7 +230,16 @@ fun AnalyticsScreen() {
             else -> {
 
                 val stats = buildSummaryStats(currentStats)
-                val areas = buildAreaComparisons(currentStats)
+
+                val areas = when (selectedComparisonMode) {
+                    AreaComparisonMode.VISITORS -> {
+                        buildAreaComparisons(currentStats)
+                    }
+
+                    AreaComparisonMode.OCCUPANCY -> {
+                        buildOccupancyComparisons(currentStats)
+                    }
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -252,6 +265,25 @@ fun AnalyticsScreen() {
                     color = AppNavy,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
+                )
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
+                AreaComparisonTabs(
+                    selected = selectedComparisonMode,
+                    onSelectedChange = {
+                        selectedComparisonMode = it
+                    }
+                )
+
+                Spacer(
+                    modifier = Modifier.height(8.dp)
+                )
+
+                AreaComparisonDescription(
+                    mode = selectedComparisonMode
                 )
 
                 Spacer(

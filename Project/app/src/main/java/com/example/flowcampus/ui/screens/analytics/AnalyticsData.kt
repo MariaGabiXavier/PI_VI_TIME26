@@ -20,14 +20,16 @@ enum class AnalyticsPeriod {
     MES
 }
 
-/**
- * Resumo de UM dia de UM ambiente.
- * Vem do Firestore: coleção `daily_stats`.
- */
+enum class AreaComparisonMode {
+    VISITORS,
+    OCCUPANCY
+}
+
 data class DailyStat(
     val environmentName: String,
     val totalVisitors: Long,
     val avgOccupancyPercent: Int,
+    val peakOccupancyPercent: Int,
     val avgWaitMinutes: Double
 )
 
@@ -53,16 +55,19 @@ data class AnalyticsInsight(
     val textAfter: String
 )
 
-// ---------------------------------------------------------------------
-// Cálculos da tela a partir dos dados do Firestore
-// ---------------------------------------------------------------------
-
-/** Abaixo de 40% verde, de 40% a 69% âmbar, 70% ou mais vermelho. */
 fun occupancyColor(percent: Int): Color {
 
     return when {
         percent >= 70 -> AppRed
         percent >= 40 -> AppAmber
+        else -> AppGreen
+    }
+}
+
+fun peakOccupancyColor(percent: Int): Color {
+    return when {
+        percent >= 80 -> AppRed
+        percent >= 60 -> AppAmber
         else -> AppGreen
     }
 }
@@ -100,15 +105,34 @@ fun buildAreaComparisons(
         .sortedByDescending { it.value }
 }
 
+fun buildOccupancyComparisons(
+    stats: List<DailyStat>
+): List<AreaComparison> {
 
-/** Os 3 cards do topo: visitantes, espera média e área mais cheia. */
+    return stats
+        .groupBy { it.environmentName }
+        .map { (name, days) ->
+
+            val peakOccupancy = days.maxOfOrNull {
+                it.peakOccupancyPercent
+            } ?: 0
+
+            AreaComparison(
+                name = name,
+                value = peakOccupancy.coerceIn(0, 100),
+                maxValue = 100,
+                color = peakOccupancyColor(peakOccupancy)
+            )
+        }
+        .sortedByDescending { it.value }
+}
+
 fun buildSummaryStats(
     stats: List<DailyStat>
 ): List<SummaryStat> {
 
     val totalVisitors = stats.sumOf { it.totalVisitors }
 
-    // espera média ponderada pelo número de visitantes
     val averageWait = if (totalVisitors > 0) {
         stats.sumOf { it.avgWaitMinutes * it.totalVisitors } / totalVisitors
     } else {

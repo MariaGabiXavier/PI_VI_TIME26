@@ -137,6 +137,76 @@ fun SummaryStatCard(
     }
 }
 
+
+@Composable
+fun AreaComparisonTabs(
+    selected: AreaComparisonMode,
+    onSelectedChange: (AreaComparisonMode) -> Unit
+) {
+    val options = listOf(
+        AreaComparisonMode.OCCUPANCY to "Ocupação",
+        AreaComparisonMode.VISITORS to "Visitantes"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(AnalyticsTabBackground)
+            .padding(4.dp)
+    ) {
+        options.forEach { (mode, label) ->
+
+            val isSelected = mode == selected
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (isSelected) Color.White else Color.Transparent
+                    )
+                    .clickable {
+                        onSelectedChange(mode)
+                    }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) AppBlue else AppGrayText,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) {
+                        FontWeight.SemiBold
+                    } else {
+                        FontWeight.Medium
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AreaComparisonDescription(
+    mode: AreaComparisonMode
+) {
+    val description = when (mode) {
+        AreaComparisonMode.OCCUPANCY ->
+            "Percentual da capacidade de cada ambiente ocupado no período."
+
+        AreaComparisonMode.VISITORS ->
+            "Total de visitantes distribuído entre os ambientes."
+    }
+
+    Text(
+        text = description,
+        color = AppGrayText,
+        fontSize = 12.sp,
+        lineHeight = 17.sp
+    )
+}
+
 @Composable
 fun AreaComparisonCard(
     areas: List<AreaComparison>
