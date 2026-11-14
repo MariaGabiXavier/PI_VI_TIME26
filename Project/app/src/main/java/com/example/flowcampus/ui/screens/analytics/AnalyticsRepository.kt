@@ -7,7 +7,6 @@ import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import android.util.Log
 
 class AnalyticsRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
@@ -19,21 +18,18 @@ class AnalyticsRepository(
         const val MAX_INSIGHTS = 3L
     }
 
+
     fun listenDailyStats(
         period: AnalyticsPeriod,
         onUpdate: (List<DailyStat>) -> Unit,
         onError: (Exception) -> Unit
     ): ListenerRegistration {
 
-        val daysBack = when (period) {
-            AnalyticsPeriod.HOJE -> 0
-            AnalyticsPeriod.SEMANA -> 6
-            AnalyticsPeriod.MES -> 29
-        }
+        val (startDate, endDate) = dateRange(period)
 
         return db.collection(DAILY_STATS)
-            .whereGreaterThanOrEqualTo("dateKey", dateKey(daysBack))
-            .whereLessThanOrEqualTo("dateKey", dateKey(0))
+            .whereGreaterThanOrEqualTo("dateKey", startDate)
+            .whereLessThanOrEqualTo("dateKey", endDate)
             .addSnapshotListener { snapshot, error ->
 
                 if (error != null) {
@@ -47,6 +43,7 @@ class AnalyticsRepository(
                 onUpdate(stats)
             }
     }
+
 
     fun listenInsights(
         onUpdate: (List<AnalyticsInsight>) -> Unit,
@@ -69,84 +66,41 @@ class AnalyticsRepository(
                 onUpdate(insights)
             }
     }
-    fun listenCameraAreas(
-        onUpdate: (List<CameraArea>) -> Unit,
-        onError: (Exception) -> Unit
-    ): ListenerRegistration {
+}
 
-        return db.collection("camera_readings")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { readingsSnapshot, error ->
 
-                if (error != null) {
-                    Log.e("AnalyticsRepository", "Erro ao buscar camera_readings", error)
-                    onError(error)
-                    return@addSnapshotListener
-                }
+private fun dateRange(period: AnalyticsPeriod): Pair<String, String> {
 
-                val latestReadings = readingsSnapshot?.documents
-                    .orEmpty()
-                    .mapNotNull { document ->
+    val today = Calendar.getInstance()
+    val endDate = formatDateKey(today)
 
-                        val environmentId =
-                            document.getString("environmentId")
-                                ?: return@mapNotNull null
+    val start = today.clone() as Calendar
 
-                        CameraArea(
-                            environmentId = environmentId,
-                            name = document.getString("environmentName")
-                                ?: "Ambiente",
-                            people = (document.get("people") as? Number)
-                                ?.toInt() ?: 0,
-                            capacity = 1
-                        )
-                    }
-                    .distinctBy { it.environmentId }
+    when (period) {
 
-                Log.d(
-                    "AnalyticsRepository",
-                    "Leituras de câmera encontradas: ${latestReadings.size}"
-                )
+        AnalyticsPeriod.HOJE -> {
+        }
 
-                db.collection("environments")
-                    .get()
-                    .addOnSuccessListener { environmentsSnapshot ->
+        AnalyticsPeriod.SEMANA -> {
+            val daysSinceSunday =
+                start.get(Calendar.DAY_OF_WEEK) - Calendar.SUNDAY
 
-                        val capacities = environmentsSnapshot.documents
-                            .associate { document ->
-                                document.id to (
-                                        (document.get("capacity") as? Number)
-                                            ?.toInt() ?: 1
-                                        )
-                            }
+            start.add(Calendar.DAY_OF_YEAR, -daysSinceSunday)
+        }
 
-                        val areas = latestReadings.map { reading ->
-                            reading.copy(
-                                capacity = capacities[reading.environmentId] ?: 1
-                            )
-                        }
-
-                        onUpdate(areas)
-                    }
-                    .addOnFailureListener { exception ->
-                        Log.e(
-                            "AnalyticsRepository",
-                            "Erro ao buscar capacidades dos ambientes",
-                            exception
-                        )
-                        onError(exception)
-                    }
-            }
+        AnalyticsPeriod.MES -> {
+            start.set(Calendar.DAY_OF_MONTH, 1)
+        }
     }
+
+    return Pair(formatDateKey(start), endDate)
 }
 
-private fun dateKey(daysBack: Int): String {
-
-    val calendar = Calendar.getInstance()
-    calendar.add(Calendar.DAY_OF_YEAR, -daysBack)
-
-    return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
+private fun formatDateKey(calendar: Calendar): String {
+    return SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        .format(calendar.time)
 }
+
 
 private fun DocumentSnapshot.toDailyStat(): DailyStat? {
 
@@ -159,6 +113,7 @@ private fun DocumentSnapshot.toDailyStat(): DailyStat? {
         avgWaitMinutes = getDouble("avgWaitMinutes") ?: 0.0
     )
 }
+
 
 private fun DocumentSnapshot.toInsight(): AnalyticsInsight? {
 

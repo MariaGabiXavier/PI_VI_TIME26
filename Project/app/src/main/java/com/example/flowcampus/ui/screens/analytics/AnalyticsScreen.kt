@@ -54,7 +54,6 @@ fun AnalyticsScreen() {
         mutableStateOf(AnalyticsPeriod.HOJE)
     }
 
-    // null = ainda carregando
     var dailyStats by remember {
         mutableStateOf<List<DailyStat>?>(null)
     }
@@ -63,23 +62,14 @@ fun AnalyticsScreen() {
         mutableStateOf(false)
     }
 
-    // Insights guardados no Firestore: aparecem na hora (e servem de reserva
-    // se o servidor de IA estiver desligado)
     var firestoreInsights by remember {
         mutableStateOf<List<AnalyticsInsight>>(emptyList())
     }
 
-    // Insights gerados pela IA (KNN / SVM / Random Forest): chegam alguns
-    // segundos depois, quando o servidor termina de treinar os modelos
     var aiInsights by remember {
         mutableStateOf<List<AnalyticsInsight>>(emptyList())
     }
 
-    var cameraAreas by remember {
-        mutableStateOf<List<CameraArea>?>(null)
-    }
-
-    // Recarrega sempre que o usuário troca Hoje / Semana / Mês
     DisposableEffect(selectedPeriod) {
 
         dailyStats = null
@@ -97,26 +87,6 @@ fun AnalyticsScreen() {
                     error
                 )
                 hasError = true
-            }
-        )
-
-        onDispose {
-            listener.remove()
-        }
-    }
-
-    DisposableEffect(repository) {
-
-        val listener = repository.listenCameraAreas(
-            onUpdate = { areas ->
-                cameraAreas = areas
-            },
-            onError = { error ->
-                Log.e(
-                    "AnalyticsScreen",
-                    "Erro ao carregar contagem das câmeras",
-                    error
-                )
             }
         )
 
@@ -145,8 +115,6 @@ fun AnalyticsScreen() {
         }
     }
 
-    // Pede a previsão ao servidor de IA ao abrir a tela. A cada chamada ele
-    // treina os 3 modelos, escolhe o de menor MAE e devolve os insights.
     LaunchedEffect(Unit) {
 
         aiRepository.fetchForecast()
@@ -160,7 +128,6 @@ fun AnalyticsScreen() {
                     )
                 }
 
-                // Conta no Perfil como "previsão usada"
                 AuthSession.user.value?.uid?.let { userId ->
                     profileRepository.registerPredictionUsed(userId)
                 }
@@ -174,7 +141,6 @@ fun AnalyticsScreen() {
             }
     }
 
-    // IA quando disponível; senão, os do Firestore
     val shownInsights = aiInsights.ifEmpty { firestoreInsights }
 
     val currentStats = dailyStats
@@ -260,7 +226,7 @@ fun AnalyticsScreen() {
             else -> {
 
                 val stats = buildSummaryStats(currentStats)
-                val areas = cameraAreas.orEmpty()
+                val areas = buildAreaComparisons(currentStats)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -276,42 +242,24 @@ fun AnalyticsScreen() {
                         )
                     }
                 }
-            }
-        }
 
-        // Comparação entre áreas: dados em tempo real das câmeras
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
-
-        Text(
-            text = "Pessoas por Ambiente",
-            color = AppNavy,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
-
-        when {
-            cameraAreas == null -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                    color = AppBlue
+                Spacer(
+                    modifier = Modifier.height(24.dp)
                 )
-            }
 
-            cameraAreas!!.isEmpty() -> {
-                AnalyticsMessageCard(
-                    message = "Ainda não há leituras das câmeras para os ambientes."
+                Text(
+                    text = "Comparação entre Áreas",
+                    color = AppNavy,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
                 )
-            }
 
-            else -> {
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+
                 AreaComparisonCard(
-                    areas = cameraAreas!!
+                    areas = areas
                 )
             }
         }
@@ -323,7 +271,7 @@ fun AnalyticsScreen() {
             )
 
             Text(
-                text = "Pessoas por Ambiente",
+                text = "Insights da IA",
                 color = AppNavy,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
