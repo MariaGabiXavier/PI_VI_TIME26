@@ -6,12 +6,23 @@ from zoneinfo import ZoneInfo
 import random
 
 
-cred = credentials.Certificate("../../VisaoComputacional/flowcampus-admin.json")
+# ==========================================
+# CONEXÃO COM O FIREBASE
+# ==========================================
+
+cred = credentials.Certificate(
+    "../../VisaoComputacional/flowcampus-admin.json"
+)
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+
+
+# ==========================================
+# AMBIENTES
+# ==========================================
 
 ambientes = [
     {
@@ -41,17 +52,38 @@ ambientes = [
     }
 ]
 
-inicio = date(2026, 11, 1)
-fim = date(2026, 11, 14)
+
+# ==========================================
+# CONFIGURAÇÕES
+# ==========================================
+
+inicio = date(2026, 11, 17)
+fim = date(2026, 11, 18)
 
 fuso = ZoneInfo("America/Sao_Paulo")
 
+# Horários das leituras simuladas: 07h até 22h
+horarios = range(7, 23)
+
 random.seed(14)
 
-batch = db.batch()
 
-criados = 0
-ignorados = 0
+# ==========================================
+# CONTROLE DOS CADASTROS
+# ==========================================
+
+operacoes = []
+
+leituras_criadas = 0
+leituras_preservadas = 0
+
+estatisticas_criadas = 0
+estatisticas_preservadas = 0
+
+
+# ==========================================
+# GERAÇÃO DOS DADOS
+# ==========================================
 
 for ambiente in ambientes:
 
@@ -67,78 +99,203 @@ for ambiente in ambientes:
 
         date_key = dia.strftime("%Y-%m-%d")
 
+        leituras_do_dia = []
+
+        for hora in horarios:
+
+            # ID único para cada ambiente e horário
+            documento_id = (
+                f"{ambiente_id}_{dia.strftime('%Y%m%d')}_{hora:02d}"
+            )
+
+            referencia = (
+                db.collection("occupancy_readings")
+                .document(documento_id)
+            )
+
+            documento_existente = referencia.get()
+
+            if documento_existente.exists:
+
+                # Preserva a leitura existente
+                dados = documento_existente.to_dict()
+
+                leituras_preservadas += 1
+
+                print(f"Leitura já existe: {documento_id}")
+
+            else:
+
+                # Simula variações de ocupação ao longo do dia
+                if 11 <= hora <= 14:
+                    ocupacao = random.randint(55, 90)
+                elif 17 <= hora <= 20:
+                    ocupacao = random.randint(45, 85)
+                elif 7 <= hora <= 9:
+                    ocupacao = random.randint(15, 45)
+                else:
+                    ocupacao = random.randint(20, 65)
+
+                pessoas = round(
+                    capacidade * ocupacao / 100
+                )
+
+                entradas = random.randint(1, 15)
+
+                espera = round(
+                    random.uniform(0.5, 4.0), 1
+                )
+
+                timestamp = datetime(
+                    dia.year,
+                    dia.month,
+                    dia.day,
+                    hora,
+                    0,
+                    0,
+                    tzinfo=fuso
+                )
+
+                dados = {
+                    "environmentId": ambiente_id,
+                    "environmentName": nome,
+                    "people": pessoas,
+                    "capacity": capacidade,
+                    "occupancyPercent": ocupacao,
+                    "entries": entradas,
+                    "waitMinutes": espera,
+                    "timestamp": timestamp,
+                    "source": "simulated"
+                }
+
+                operacoes.append((referencia, dados))
+
+                leituras_criadas += 1
+
+                print(
+                    f"Leitura criada: {documento_id} "
+                    f"| Pessoas: {pessoas} "
+                    f"| Ocupação: {ocupacao}%"
+                )
+
+            # Inclui leituras novas e existentes
+            leituras_do_dia.append(dados)
+
+        # ======================================
+        # ESTATÍSTICAS DIÁRIAS
+        # ======================================
+
         documento_id = f"{ambiente_id}_{date_key}"
 
-        referencia = (
+        referencia_diaria = (
             db.collection("daily_stats")
             .document(documento_id)
         )
 
-        # Preservar documentos existentes
-        if referencia.get().exists:
-            print(f"Já existe: {documento_id}")
-            ignorados += 1
-            dia += timedelta(days=1)
-            continue
+        if referencia_diaria.get().exists:
 
+            # Preserva o documento diário existente
+            estatisticas_preservadas += 1
 
-        visitantes = random.randint(
-            capacidade * 2,
-            capacidade * 5
-        )
+            print(f"Estatística diária já existe: {documento_id}")
 
-        ocupacao = random.randint(25, 70)
+        else:
 
-        pico_ocupacao = random.randint(
-            max(ocupacao, 40), 90
-        )
+            ocupacoes = [
+                leitura.get("occupancyPercent", 0)
+                for leitura in leituras_do_dia
+            ]
 
-        espera = round(random.uniform(0.5, 4.0), 1)
+            esperas = [
+                leitura.get("waitMinutes", 0)
+                for leitura in leituras_do_dia
+            ]
 
-        horario_pico = random.randint(10, 16)
+            entradas = [
+                leitura.get("entries", 0)
+                for leitura in leituras_do_dia
+            ]
 
-        pico_pessoas = round(
-            capacidade * pico_ocupacao / 100
-        )
+            pessoas = [
+                leitura.get("people", 0)
+                for leitura in leituras_do_dia
+            ]
 
-        data_timestamp = datetime(
-            dia.year,
-            dia.month,
-            dia.day,
-            0, 0, 0,
-            tzinfo=fuso
-        )
+            # Identifica o horário de maior ocupação
+            indice_pico = ocupacoes.index(max(ocupacoes))
 
-        documento = {
-            "environmentId": ambiente_id,
-            "environmentName": nome,
-            "dateKey": date_key,
-            "date": data_timestamp,
-            "totalVisitors": visitantes,
-            "capacity": capacidade,
-            "avgOccupancyPercent": ocupacao,
-            "avgWaitMinutes": espera,
-            "peakHour": horario_pico,
-            "peakOccupancyPercent": pico_ocupacao,
-            "peakPeople": pico_pessoas,
-            "source": "simulated"
-        }
+            horario_pico = list(horarios)[indice_pico]
 
-        batch.set(referencia, documento)
+            data_timestamp = datetime(
+                dia.year,
+                dia.month,
+                dia.day,
+                0,
+                0,
+                0,
+                tzinfo=fuso
+            )
 
-        criados += 1
+            documento = {
+                "environmentId": ambiente_id,
+                "environmentName": nome,
+                "dateKey": date_key,
+                "date": data_timestamp,
+                "totalVisitors": sum(entradas),
+                "capacity": capacidade,
+                "avgOccupancyPercent": round(
+                    sum(ocupacoes) / len(ocupacoes), 1
+                ),
+                "avgWaitMinutes": round(
+                    sum(esperas) / len(esperas), 1
+                ),
+                "peakHour": horario_pico,
+                "peakOccupancyPercent": max(ocupacoes),
+                "peakPeople": max(pessoas),
+                "source": "simulated"
+            }
 
-        print(f"Criado: {documento_id}")
+            operacoes.append((referencia_diaria, documento))
+
+            estatisticas_criadas += 1
+
+            print(f"Estatística diária criada: {documento_id}")
 
         dia += timedelta(days=1)
 
 
-if criados > 0:
-    batch.commit()
+# ==========================================
+# GRAVAÇÃO NO FIREBASE
+# ==========================================
+
+# O Firestore permite no máximo 500 operações
+# por lote. Aqui usamos lotes de até 400.
+
+for i in range(0, len(operacoes), 400):
+
+    lote = db.batch()
+
+    grupo = operacoes[i:i + 400]
+
+    for referencia, documento in grupo:
+        lote.set(referencia, documento)
+
+    lote.commit()
+
+    print(f"\nLote enviado: {len(grupo)} documentos")
+
+
+# ==========================================
+# RESULTADO
+# ==========================================
 
 print("\n================================")
 print("CADASTRO FINALIZADO!")
 print("================================")
+
 print(f"Ambientes: {len(ambientes)}")
-print(f"Documentos criados: {criados}")
-print(f"Documentos preservados: {ignorados}")
+print(f"Leituras horárias criadas: {leituras_criadas}")
+print(f"Leituras horárias preservadas: {leituras_preservadas}")
+print(f"Estatísticas diárias criadas: {estatisticas_criadas}")
+print(f"Estatísticas diárias preservadas: {estatisticas_preservadas}")
+print(f"Total de documentos enviados: {len(operacoes)}")

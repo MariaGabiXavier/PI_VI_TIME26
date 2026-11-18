@@ -8,8 +8,8 @@ import com.example.flowcampus.ui.theme.AppGreen
 import com.example.flowcampus.ui.theme.AppNavy
 import com.example.flowcampus.ui.theme.AppRed
 import java.text.NumberFormat
-import java.util.Locale
 import kotlin.math.roundToInt
+import java.util.Locale
 
 val AnalyticsTrack = Color(0xFFEDEEF4)
 val AnalyticsTabBackground = Color(0xFFE7E9F2)
@@ -30,7 +30,16 @@ data class DailyStat(
     val totalVisitors: Long,
     val avgOccupancyPercent: Int,
     val peakOccupancyPercent: Int,
-    val avgWaitMinutes: Double
+    val avgWaitMinutes: Double,
+    val waitWeight: Long = 0L
+)
+
+data class CameraOccupancyReading(
+    val environmentId: String,
+    val environmentName: String,
+    val people: Int,
+    val occupancyPercent: Double,
+    val timestamp: Long
 )
 
 data class SummaryStat(
@@ -127,14 +136,62 @@ fun buildOccupancyComparisons(
         .sortedByDescending { it.value }
 }
 
+fun buildCombinedOccupancyComparisons(
+    stats: List<DailyStat>,
+    cameraReadings: List<CameraOccupancyReading>
+): List<AreaComparison> {
+
+    val simulatedOccupancy = stats
+        .groupBy { it.environmentName }
+        .mapValues { (_, days) ->
+            days.maxOfOrNull {
+                it.peakOccupancyPercent
+            } ?: 0
+        }
+
+    val cameraOccupancy = cameraReadings
+        .groupBy { it.environmentName }
+        .mapValues { (_, readings) ->
+            readings.maxOfOrNull {
+                it.occupancyPercent.roundToInt()
+            } ?: 0
+        }
+
+    val allEnvironmentNames =
+        simulatedOccupancy.keys + cameraOccupancy.keys
+
+    return allEnvironmentNames
+        .distinct()
+        .map { name ->
+
+            val simulated = simulatedOccupancy[name] ?: 0
+            val camera = cameraOccupancy[name] ?: 0
+
+            val combinedPeak = maxOf(simulated, camera)
+                .coerceIn(0, 100)
+
+            AreaComparison(
+                name = name,
+                value = combinedPeak,
+                maxValue = 100,
+                color = peakOccupancyColor(combinedPeak)
+            )
+        }
+        .sortedByDescending { it.value }
+}
+
 fun buildSummaryStats(
     stats: List<DailyStat>
 ): List<SummaryStat> {
 
     val totalVisitors = stats.sumOf { it.totalVisitors }
 
-    val averageWait = if (totalVisitors > 0) {
-        stats.sumOf { it.avgWaitMinutes * it.totalVisitors } / totalVisitors
+    val totalWaitWeight = stats.sumOf { it.waitWeight }
+
+    val averageWait = if (totalWaitWeight > 0) {
+        stats.sumOf {
+            it.avgWaitMinutes * it.waitWeight
+        } / totalWaitWeight
     } else {
         0.0
     }
@@ -151,7 +208,7 @@ fun buildSummaryStats(
     return listOf(
 
         SummaryStat(
-            label = "Visitantes Totais",
+            label = "Cntagem Acumulada",
             value = visitorsFormat.format(totalVisitors),
             valueColor = AppNavy
         ),

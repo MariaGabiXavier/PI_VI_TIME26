@@ -62,6 +62,10 @@ fun AnalyticsScreen() {
         mutableStateOf<List<DailyStat>?>(null)
     }
 
+    //var cameraReadings by remember {
+    //    mutableStateOf<List<CameraOccupancyReading>?>(null)
+    //}
+
     var hasError by remember {
         mutableStateOf(false)
     }
@@ -79,7 +83,7 @@ fun AnalyticsScreen() {
         dailyStats = null
         hasError = false
 
-        val listener = repository.listenDailyStats(
+        val listener = repository.listenCombinedStats(
             period = selectedPeriod,
             onUpdate = { updatedStats ->
                 dailyStats = updatedStats
@@ -87,7 +91,7 @@ fun AnalyticsScreen() {
             onError = { error ->
                 Log.e(
                     "AnalyticsScreen",
-                    "Erro ao carregar estatísticas do Firestore",
+                    "Erro ao carregar dados combinados",
                     error
                 )
                 hasError = true
@@ -149,6 +153,8 @@ fun AnalyticsScreen() {
 
     val currentStats = dailyStats
 
+    //val currentCameraReadings = cameraReadings
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -195,6 +201,7 @@ fun AnalyticsScreen() {
             modifier = Modifier.height(16.dp)
         )
 
+
         when {
 
             hasError -> {
@@ -232,6 +239,7 @@ fun AnalyticsScreen() {
                 val stats = buildSummaryStats(currentStats)
 
                 val areas = when (selectedComparisonMode) {
+
                     AreaComparisonMode.VISITORS -> {
                         buildAreaComparisons(currentStats)
                     }
@@ -295,6 +303,7 @@ fun AnalyticsScreen() {
                 )
             }
         }
+
 
         if (shownInsights.isNotEmpty()) {
 

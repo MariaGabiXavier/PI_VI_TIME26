@@ -193,10 +193,10 @@ fun AreaComparisonDescription(
 ) {
     val description = when (mode) {
         AreaComparisonMode.OCCUPANCY ->
-            "Percentual da capacidade de cada ambiente ocupado no período."
+            "Ocupação calculada com as contagens simuladas e da visão computacional."
 
         AreaComparisonMode.VISITORS ->
-            "Total de visitantes distribuído entre os ambientes."
+            "Contagem acumulada das leituras simuladas e da visão computacional."
     }
 
     Text(
