@@ -8,6 +8,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.TimeZone
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -31,7 +32,12 @@ class AnalyticsRepository(
 
         val (startDate, endDate) = timestampRange(period)
 
-
+        android.util.Log.d(
+            "AnalyticsRepository",
+            "PERÍODO: $period | " +
+                    "INÍCIO: ${startDate.toDate()} | " +
+                    "FIM: ${endDate.toDate()}"
+        )
 
         var simulatedDocs: List<DocumentSnapshot>? = null
         var cameraDocs: List<DocumentSnapshot>? = null
@@ -81,6 +87,14 @@ class AnalyticsRepository(
                 } else {
                     simulatedError = null
                     simulatedDocs = snapshot?.documents.orEmpty()
+
+                    simulatedDocs?.forEach { doc ->
+                        android.util.Log.d(
+                            "AnalyticsRepository",
+                            "SIMULADO: ${doc.id} | " +
+                                    "timestamp: ${doc.getTimestamp("timestamp")?.toDate()}"
+                        )
+                    }
                 }
 
                 publishIfReady()
@@ -98,6 +112,14 @@ class AnalyticsRepository(
                 } else {
                     cameraError = null
                     cameraDocs = snapshot?.documents.orEmpty()
+
+                    cameraDocs?.forEach { doc ->
+                        android.util.Log.d(
+                            "AnalyticsRepository",
+                            "CÂMERA: ${doc.id} | " +
+                                    "timestamp: ${doc.getTimestamp("timestamp")?.toDate()}"
+                        )
+                    }
                 }
 
                 publishIfReady()
@@ -234,7 +256,9 @@ private fun combineReadings(
         .mapNotNull { it.toRawReading(isCamera = true) }
 
     fun hourKey(reading: RawReading): HourKey {
-        val calendar = Calendar.getInstance()
+        val calendar = Calendar.getInstance(
+            TimeZone.getTimeZone("America/Sao_Paulo")
+        )
         calendar.timeInMillis = reading.timestamp
         calendar.set(Calendar.MINUTE, 0)
         calendar.set(Calendar.SECOND, 0)
@@ -354,8 +378,14 @@ private fun combineReadings(
 
     combinedByKey.entries
         .groupBy { entry ->
-            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                .format(Date(entry.key.hour))
+            val dateFormat = SimpleDateFormat(
+                "yyyy-MM-dd",
+                Locale.US
+            ).apply {
+                timeZone = TimeZone.getTimeZone("America/Sao_Paulo")
+            }
+
+            val date = dateFormat.format(Date(entry.key.hour))
 
             "${entry.key.environmentId}|$date"
         }
@@ -403,11 +433,14 @@ private fun combineReadings(
 
 }
 
+
 private fun timestampRange(
     period: AnalyticsPeriod
 ): Pair<Timestamp, Timestamp> {
 
-    val end = Calendar.getInstance()
+    val timeZone = TimeZone.getTimeZone("America/Sao_Paulo")
+
+    val end = Calendar.getInstance(timeZone)
     val start = end.clone() as Calendar
 
     when (period) {
@@ -433,6 +466,7 @@ private fun timestampRange(
 
     return Timestamp(start.time) to Timestamp(end.time)
 }
+
 
 private fun DocumentSnapshot.toInsight(): AnalyticsInsight? {
 
