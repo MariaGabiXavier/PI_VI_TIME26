@@ -364,15 +364,50 @@ def resolve_environments(db):
     return resolved
 
 
+
+
+import time
+
 def commit_all(db, operations, label):
-    """operations: lista de (colecao, doc_id, dados). Lotes de 400 (limite e 500)."""
-    size = 400
+    """Cria documentos novos em lotes, preservando os existentes."""
+    size = 100
+    created = 0
+    skipped = 0
+
     for start in range(0, len(operations), size):
+        current = operations[start:start + size]
+
+        refs = [
+            db.collection(collection).document(doc_id)
+            for collection, doc_id, data in current
+        ]
+
+        existing_ids = {
+            doc.id for doc in db.get_all(refs) if doc.exists
+        }
+
         batch = db.batch()
-        for collection, doc_id, data in operations[start:start + size]:
-            batch.set(db.collection(collection).document(doc_id), data)
-        batch.commit()
-        print(f"  {label}: {min(start + size, len(operations))}/{len(operations)}")
+        pending = 0
+
+        for (collection, doc_id, data), ref in zip(current, refs):
+            if doc_id in existing_ids:
+                skipped += 1
+                continue
+
+            batch.create(ref, data)
+            pending += 1
+
+        if pending:
+            batch.commit()
+            created += pending
+
+        print(
+            f"  {label}: {created} criados, "
+            f"{skipped} existentes preservados"
+        )
+
+        time.sleep(0.5)
+
 
 
 def clean_simulated(db):

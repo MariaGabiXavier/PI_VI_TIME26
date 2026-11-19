@@ -36,7 +36,11 @@ def run_forecast(readings: pd.DataFrame, now: datetime, horizon_hours: int = 48,
     training = train_and_select(observed, validation_days)       # treina os 3 modelos
     predictions = forecast_hours(training, observed, now, horizon_hours)
 
-    latest = observed.sort_values("ts").groupby("environmentId").tail(1).set_index("environmentId")
+    latest = (
+    observed.sort_values("ts")
+    .drop_duplicates(subset=["environmentId"], keep="last")
+    .set_index("environmentId")
+)
 
     forecasts: List[dict] = []
     for env_id in training.env_ids:

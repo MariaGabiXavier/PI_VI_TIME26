@@ -57,8 +57,8 @@ ambientes = [
 # CONFIGURAÇÕES
 # ==========================================
 
-inicio = date(2026, 11, 18)
-fim = date(2026, 11, 18)
+inicio = date(2026, 11, 19)
+fim = date(2026, 11, 19)
 
 fuso = ZoneInfo("America/Sao_Paulo")
 

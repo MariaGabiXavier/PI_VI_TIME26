@@ -277,23 +277,11 @@ private fun combineReadings(
             readings.maxByOrNull { it.timestamp }!!
         }
 
-    // A câmera pode registrar várias capturas na mesma hora.
-    // Usamos a mediana para não somar repetidamente as mesmas pessoas.
+    // Utiliza a última leitura da câmera em cada hora.
     val cameraByHour = camera
         .groupBy { hourKey(it) }
         .mapValues { (_, readings) ->
-
-            val latest = readings.maxByOrNull { it.timestamp }!!
-
-            latest.copy(
-                people = median(readings.map { it.people }),
-                capacity = median(
-                    readings.map { it.capacity }.filter { it > 0 }
-                ),
-                occupancyPercent = readings
-                    .map { it.occupancyPercent }
-                    .average()
-            )
+            readings.maxByOrNull { it.timestamp }!!
         }
 
     val allKeys = simulatedByHour.keys + cameraByHour.keys
@@ -308,9 +296,8 @@ private fun combineReadings(
                     (cameraReading?.people ?: 0)
 
         val capacity =
-            simulatedReading?.capacity?.takeIf { it > 0 }
-                ?: cameraReading?.capacity?.takeIf { it > 0 }
-                ?: 0
+            (simulatedReading?.capacity ?: 0) +
+                    (cameraReading?.capacity ?: 0)
 
         val occupancy = if (capacity > 0) {
             (people.toDouble() / capacity * 100)
