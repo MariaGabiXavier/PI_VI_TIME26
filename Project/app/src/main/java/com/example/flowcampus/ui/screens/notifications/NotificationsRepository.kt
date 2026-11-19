@@ -13,12 +13,14 @@ class NotificationsRepository(
 ) {
 
     // Escuta a coleção "notifications" em tempo real, da mais nova pra mais antiga
+    // (só as 50 mais recentes, para não gastar leituras do Firestore)
     fun listenNotifications(
         onUpdate: (List<NotificationItem>) -> Unit,
         onError: (Exception) -> Unit
     ): ListenerRegistration {
         return db.collection("notifications")
             .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(50)
             .addSnapshotListener { snapshot, error ->
 
                 if (error != null) {

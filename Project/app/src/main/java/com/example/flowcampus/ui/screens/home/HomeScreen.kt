@@ -49,8 +49,8 @@ fun HomeScreen(
     }
 
     val cameraReadingRepository = remember {
-    CameraReadingRepository()
-}
+        CameraReadingRepository()
+    }
 
     val cameraReadingsState = remember {
         mutableStateOf<Map<String, CameraReading?>>(emptyMap())
@@ -91,11 +91,11 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
-    while (true) {
-        currentTime = System.currentTimeMillis()
-        delay(5_000)
+        while (true) {
+            currentTime = System.currentTimeMillis()
+            delay(5_000)
+        }
     }
-}
 
     val placesWithForecast = places.map { place ->
 
@@ -156,38 +156,38 @@ fun HomeScreen(
 
     DisposableEffect(cameraReadingRepository, places) {
 
-    val listeners = places.mapNotNull { place ->
+        val listeners = places.mapNotNull { place ->
 
-        val environmentId = place.firestoreId
+            val environmentId = place.firestoreId
 
-        if (environmentId.isBlank()) {
-            return@mapNotNull null
-        }
-
-        cameraReadingRepository.listenLatestReading(
-            environmentId = environmentId,
-
-            onUpdate = { reading ->
-                cameraReadingsState.value =
-                    cameraReadingsState.value + (environmentId to reading)
-            },
-
-            onError = { error ->
-                Log.e(
-                    "HomeScreen",
-                    "Erro ao carregar leitura da câmera: $environmentId",
-                    error
-                )
+            if (environmentId.isBlank()) {
+                return@mapNotNull null
             }
-        )
-    }
 
-    onDispose {
-        listeners.forEach { listener ->
-            listener.remove()
+            cameraReadingRepository.listenLatestReading(
+                environmentId = environmentId,
+
+                onUpdate = { reading ->
+                    cameraReadingsState.value =
+                        cameraReadingsState.value + (environmentId to reading)
+                },
+
+                onError = { error ->
+                    Log.e(
+                        "HomeScreen",
+                        "Erro ao carregar leitura da câmera: $environmentId",
+                        error
+                    )
+                }
+            )
+        }
+
+        onDispose {
+            listeners.forEach { listener ->
+                listener.remove()
+            }
         }
     }
-}
 
     // Favoritos e números do Perfil ficam no documento do usuário
     DisposableEffect(userId) {
@@ -293,7 +293,10 @@ fun HomeScreen(
             ) {
                 NotificationsScreen(
                     onNotificationClick = { environmentId ->
-                        places.firstOrNull { it.name.toEnvironmentId() == environmentId }
+                        places.firstOrNull {
+                            it.firestoreId == environmentId ||
+                                    it.name.toEnvironmentId() == environmentId
+                        }
                             ?.let { selectedPlace = it }
                     }
                 )
@@ -395,17 +398,17 @@ fun HomeScreen(
 
     selectedPlace?.let { place ->
 
-    val placeForecast = aiForecast?.forecasts?.firstOrNull {
-        it.environmentId == place.firestoreId ||
-            it.environmentName.equals(place.name, ignoreCase = true)
-    }
-
-    PlaceDetailScreen(
-        place = place,
-        forecast = placeForecast,
-        onBack = {
-            selectedPlace = null
+        val placeForecast = aiForecast?.forecasts?.firstOrNull {
+            it.environmentId == place.firestoreId ||
+                    it.environmentName.equals(place.name, ignoreCase = true)
         }
-    )
-}
+
+        PlaceDetailScreen(
+            place = place,
+            forecast = placeForecast,
+            onBack = {
+                selectedPlace = null
+            }
+        )
+    }
 }

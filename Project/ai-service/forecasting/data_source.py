@@ -1,4 +1,3 @@
-
 """Carrega e unifica leituras simuladas e das câmeras do FlowCampus.
 
 Fonte simulada: occupancy_readings
@@ -246,8 +245,8 @@ def standardize_camera(raw: pd.DataFrame) -> pd.DataFrame:
     # Quando a câmera não informa a capacidade,
     # estimamos pela relação entre pessoas e ocupação.
     estimated_capacity = (
-        grouped["cameraPeople"] * 100
-        / grouped["cameraOccupancy"].replace(0, pd.NA)
+            grouped["cameraPeople"] * 100
+            / grouped["cameraOccupancy"].replace(0, pd.NA)
     )
 
     grouped["cameraCapacity"] = (
@@ -260,10 +259,9 @@ def standardize_camera(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def combine_sources(
-    simulated: pd.DataFrame,
-    camera: pd.DataFrame
+        simulated: pd.DataFrame,
+        camera: pd.DataFrame
 ) -> pd.DataFrame:
-    """Combina as duas fontes em uma leitura por ambiente e hora."""
 
     if simulated.empty and camera.empty:
         return pd.DataFrame(
@@ -275,6 +273,7 @@ def combine_sources(
                 "occupancyPercent",
                 "entries",
                 "waitMinutes",
+                "people",
             ]
         )
 
@@ -299,80 +298,41 @@ def combine_sources(
         .fillna("Ambiente")
     )
 
-    merged["capacity"] = (
-        merged["simulatedCapacity"].fillna(0)
-        + merged["cameraCapacity"].fillna(0)
-    )
-
-    simulated_people = merged["simulatedPeople"].fillna(0)
-    camera_people = merged["cameraPeople"].fillna(0)
-
-    total_people = simulated_people + camera_people
-
-    has_simulated = merged["simulatedOccupancy"].notna()
     has_camera = merged["cameraOccupancy"].notna()
 
-    # Se as duas fontes representam áreas distintas do mesmo
-    # ambiente, somamos as pessoas e calculamos a ocupação.
-    calculated_occupancy = (
-        total_people * 100
-        / merged["capacity"].replace(0, pd.NA)
+    # Capacidade: a do cadastro simulado; sem ela, a estimada pela câmera.
+    camera_capacity = merged["cameraCapacity"].where(
+        merged["cameraCapacity"] > 0
+    )
+    capacity = (
+        merged["simulatedCapacity"]
+        .fillna(camera_capacity)
+        .fillna(0)
     )
 
-
-    has_capacity = merged["capacity"] > 0
-
-    # Converte explicitamente para float64 e calcula
-    # a ocupação sem atribuições incompatíveis de tipos.
-    occupancy = pd.Series(
-        0.0,
-        index=merged.index,
-        dtype="float64"
+    # Câmera (real) tem prioridade sobre o simulado.
+    occupancy = merged["cameraOccupancy"].where(
+        has_camera,
+        merged["simulatedOccupancy"],
     )
-
-    calculated_occupancy = pd.to_numeric(
-        calculated_occupancy,
-        errors="coerce"
-    ).astype("float64")
-
-    occupancy = occupancy.where(
-        ~has_capacity,
-        calculated_occupancy
-    )
-
-
-    # Sem capacidade conhecida, preservamos a ocupação
-    # informada pela única fonte disponível.
-    only_simulated = has_simulated & ~has_camera
-    only_camera = has_camera & ~has_simulated
-    both_without_capacity = (
-        has_simulated & has_camera & ~has_capacity
-    )
-
-    occupancy.loc[only_simulated] = (
-        merged.loc[only_simulated, "simulatedOccupancy"]
-    )
-
-    occupancy.loc[only_camera] = (
-        merged.loc[only_camera, "cameraOccupancy"]
-    )
-
-    occupancy.loc[both_without_capacity] = (
-        merged.loc[both_without_capacity, [
-            "simulatedOccupancy",
-            "cameraOccupancy",
-        ]].max(axis=1)
+    people = merged["cameraPeople"].where(
+        has_camera,
+        merged["simulatedPeople"],
     )
 
     result = pd.DataFrame({
         "environmentId": merged["environmentId"],
         "environmentName": merged["environmentName"],
-        "capacity": merged["capacity"],
+        "capacity": capacity.astype("float64"),
         "ts": merged["ts"],
-        "occupancyPercent": occupancy.clip(0, 100),
+        "occupancyPercent": pd.to_numeric(
+            occupancy, errors="coerce"
+        ).astype("float64").clip(0, 100),
         "entries": merged["entries"].fillna(0),
         "waitMinutes": merged["waitMinutes"].fillna(0),
-        "people": total_people,
+        "people": pd.to_numeric(
+            people, errors="coerce"
+        ).astype("float64"),
     })
 
     result = result.dropna(
@@ -400,8 +360,8 @@ def _read_firestore(settings: Settings) -> pd.DataFrame:
     )
 
     cutoff = (
-        datetime.now(timezone.utc)
-        - timedelta(days=settings.history_days)
+            datetime.now(timezone.utc)
+            - timedelta(days=settings.history_days)
     )
 
     # ------------------------------------------
@@ -494,8 +454,8 @@ def _read_csv(settings: Settings) -> pd.DataFrame:
 
 
 def load_readings(
-    settings: Settings,
-    force: bool = False
+        settings: Settings,
+        force: bool = False
 ) -> pd.DataFrame:
     """Devolve os dados unificados, respeitando o tempo de cache."""
 
@@ -503,9 +463,9 @@ def load_readings(
         age = time.time() - _cache["loaded_at"]
 
         if (
-            force
-            or _cache["df"] is None
-            or age > settings.cache_seconds
+                force
+                or _cache["df"] is None
+                or age > settings.cache_seconds
         ):
 
             if settings.data_source == "firestore":

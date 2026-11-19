@@ -30,7 +30,8 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from .config import Settings, get_settings
-from .data_source import COLLECTION, LOCAL_TZ, get_firebase_app, load_readings
+from .data_source import (CAMERA_COLLECTION, LOCAL_TZ, SIMULATED_COLLECTION,
+                          get_firebase_app, load_readings)
 from .ml_pipeline import NotEnoughDataError
 from .service import parse_now, run_forecast
 
@@ -141,8 +142,51 @@ class Sender:
             logger.exception("O push não foi enviado (a notificação foi gravada)")
 
 
+def read_firestore_current(db, start: datetime, now: datetime) -> List[dict]:
+    """Leituras recentes direto do Firestore, lendo o MÍNIMO de documentos
+    (o plano Spark só permite 50 mil leituras por dia).
+
+      - simulado: só as últimas horas (poucos documentos);
+      - câmera: só a leitura mais nova de cada ambiente (limit 1), porque a
+        câmera grava a cada 30 segundos e ler tudo gastaria a cota."""
+    from firebase_admin import firestore
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    rows: List[dict] = []
+
+    # 1) leituras simuladas das últimas horas
+    query = (db.collection(SIMULATED_COLLECTION)
+             .where(filter=FieldFilter("timestamp", ">=", start))
+             .where(filter=FieldFilter("timestamp", "<=", now)))
+    for doc in query.stream():
+        data = doc.to_dict()
+        data["ts"] = pd.Timestamp(data["timestamp"]).tz_convert(LOCAL_TZ)
+        data["isCamera"] = False
+        rows.append(data)
+
+    # 2) a leitura mais nova da câmera de cada ambiente cadastrado
+    for env_doc in db.collection("environments").stream():
+        query = (db.collection(CAMERA_COLLECTION)
+                 .where(filter=FieldFilter("environmentId", "==", env_doc.id))
+                 .order_by("timestamp", direction=firestore.Query.DESCENDING)
+                 .limit(1))
+        for doc in query.stream():
+            data = doc.to_dict()
+            if data.get("timestamp") is None:
+                continue          # o horário do servidor ainda não foi preenchido
+            data["ts"] = pd.Timestamp(data["timestamp"]).tz_convert(LOCAL_TZ)
+            data["isCamera"] = True
+            data.setdefault("environmentName", (env_doc.to_dict() or {}).get("name", "Ambiente"))
+            rows.append(data)
+
+    return rows
+
+
 def read_current(settings: Settings, db, now: datetime) -> Dict[str, dict]:
-    """Última leitura (até agora) de cada ambiente, dentro da janela recente."""
+    """Última leitura (até agora) de cada ambiente, dentro da janela recente.
+
+    Se o ambiente tem leitura da câmera, ela vale mais que a simulada
+    (a câmera é a medição real)."""
     start = now - timedelta(hours=RECENT_HOURS)
 
     if settings.data_source == "csv":
@@ -150,21 +194,22 @@ def read_current(settings: Settings, db, now: datetime) -> Dict[str, dict]:
         frame = frame[(frame["ts"] >= start) & (frame["ts"] <= now)]
         rows = frame.to_dict("records")
     else:
-        from google.cloud.firestore_v1.base_query import FieldFilter
-
-        query = (db.collection(COLLECTION)
-                 .where(filter=FieldFilter("timestamp", ">=", start))
-                 .where(filter=FieldFilter("timestamp", "<=", now)))
-        rows = []
-        for doc in query.stream():
-            data = doc.to_dict()
-            data["ts"] = pd.Timestamp(data["timestamp"]).tz_convert(LOCAL_TZ)
-            rows.append(data)
+        rows = read_firestore_current(db, start, now)
 
     latest: Dict[str, dict] = {}
     for row in rows:
         env_id = row["environmentId"]
-        if env_id not in latest or row["ts"] > latest[env_id]["ts"]:
+        old = latest.get(env_id)
+        if old is None:
+            latest[env_id] = row
+            continue
+
+        new_is_camera = bool(row.get("isCamera", False))
+        old_is_camera = bool(old.get("isCamera", False))
+        if new_is_camera != old_is_camera:
+            if new_is_camera:                 # câmera ganha da simulada
+                latest[env_id] = row
+        elif row["ts"] > old["ts"]:           # mesma origem: a mais nova
             latest[env_id] = row
     return latest
 
