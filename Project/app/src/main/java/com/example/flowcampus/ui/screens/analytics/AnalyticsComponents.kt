@@ -193,10 +193,10 @@ fun AreaComparisonDescription(
 ) {
     val description = when (mode) {
         AreaComparisonMode.OCCUPANCY ->
-            "Ocupação calculada com as contagens simuladas e da visão computacional."
+            "Maior ocupação por ambiente observada no período."
 
         AreaComparisonMode.VISITORS ->
-            "Contagem acumulada das leituras simuladas e da visão computacional."
+            "Total de visitantes atribuido entre os ambientes."
     }
 
     Text(

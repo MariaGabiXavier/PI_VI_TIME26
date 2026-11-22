@@ -57,13 +57,16 @@ ambientes = [
 # CONFIGURAÇÕES
 # ==========================================
 
-inicio = date(2026, 11, 19)
-fim = date(2026, 11, 19)
+inicio = date(2026, 11, 20)
+fim = date(2026, 11, 21)
 
 fuso = ZoneInfo("America/Sao_Paulo")
 
 # Horários das leituras simuladas: 07h até 22h
-horarios = range(7, 23)
+#horarios = range(7, 23)
+
+hora_atual = datetime.now(fuso).hour
+horarios = range(7, min(hora_atual, 22) + 1)
 
 random.seed(14)
 
