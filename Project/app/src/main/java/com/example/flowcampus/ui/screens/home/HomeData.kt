@@ -143,7 +143,7 @@ data class PlaceDetailMock(
     val recommendationPeople: Int,
     val recommendationTime: String,
     val hourlyPeople: List<Int> = emptyList(),
-    val hours: List<Int> = emptyList(),
+    val hours: List<String> = emptyList(),
     val minutesUntilRecommendation: Int = 0,
     val recommendationStatus: String = "Sem previsão"
 )
@@ -196,17 +196,22 @@ fun getPlaceDetail(
         )
     }
 
-    // Horários previstos para hoje.
-    val todayPoints = validPoints
-        .filter { it.second.toLocalDate() == now.toLocalDate() }
-        .sortedBy { it.second }
+    // Usa todos os pontos válidos da previsão, inclusive os de amanhã.
+    val chartPoints = validPoints.sortedBy { it.second }
 
-    // Gráfico: previsão a cada duas horas, das 08h às 22h.
-    val chartPoints = todayPoints.filter { (_, time) ->
-        time.hour in 8..22 && time.hour % 2 == 0
+    val hours = chartPoints.map { (_, time) ->
+        if (time.toLocalDate() == now.toLocalDate()) {
+            "%02d:%02d".format(time.hour, time.minute)
+        } else {
+            "%02d/%02d %02d:%02d".format(
+                time.dayOfMonth,
+                time.monthValue,
+                time.hour,
+                time.minute
+            )
+        }
     }
 
-    val hours = chartPoints.map { it.second.hour }
     val hourlyPeople = chartPoints.map { it.first.predictedPeople }
 
     // Horário de maior ocupação previsto pela IA.

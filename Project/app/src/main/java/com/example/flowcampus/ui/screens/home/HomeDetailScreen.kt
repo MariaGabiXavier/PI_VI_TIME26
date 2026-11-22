@@ -205,26 +205,6 @@ fun PlaceDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
 
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Blue)
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(3.dp)
-                        )
-
-                        Text(
-                            text = "Hoje",
-                            color = GrayText,
-                            fontSize = 8.sp
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(6.dp)
-                        )
 
                         Box(
                             modifier = Modifier
@@ -338,9 +318,23 @@ fun DetailInfoCard(
     }
 }
 
+
 @Composable
 fun OccupationChart(data: PlaceDetailMock) {
     val capacity = data.capacity.coerceAtLeast(1)
+    val count = minOf(data.hourlyPeople.size, data.hours.size)
+
+    // Exibe no máximo quatro horários para evitar sobreposição.
+    val labelIndices = when {
+        data.hours.isEmpty() -> emptyList()
+        data.hours.size <= 4 -> data.hours.indices.toList()
+        else -> listOf(
+            0,
+            data.hours.size / 3,
+            (data.hours.size * 2) / 3,
+            data.hours.lastIndex
+        ).distinct()
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -367,18 +361,16 @@ fun OccupationChart(data: PlaceDetailMock) {
                         bottom = 18.dp
                     )
             ) {
-                val count = minOf(data.hourlyPeople.size, data.hours.size)
-
                 if (count > 0) {
-                    val barWidth = 12.dp.toPx()
                     val chartHeight = size.height
-                    val spacing = (
-                        size.width - barWidth * count
-                    ).coerceAtLeast(0f) / count
+                    val slotWidth = size.width / count
+
+                    val barWidth = (
+                        slotWidth * 0.7f
+                    ).coerceAtLeast(2.dp.toPx())
 
                     repeat(count) { index ->
                         val people = data.hourlyPeople[index]
-                        val hour = data.hours[index]
 
                         val percentage = (
                             people.toFloat() / capacity
@@ -388,19 +380,13 @@ fun OccupationChart(data: PlaceDetailMock) {
                             percentage * chartHeight
                         ).coerceAtLeast(3.dp.toPx())
 
-                        val x = index * (barWidth + spacing)
+                        val x = index * slotWidth +
+                            (slotWidth - barWidth) / 2f
+
                         val y = chartHeight - barHeight
 
-                        // Horários anteriores e atuais: azul.
-                        // Horários futuros: verde.
-                        val color = if (hour <= java.time.LocalTime.now().hour) {
-                            Blue
-                        } else {
-                            Color(0xFF71C997)
-                        }
-
                         drawRoundRect(
-                            color = color,
+                            color = Color(0xFF71C997),
                             topLeft = Offset(x, y),
                             size = Size(barWidth, barHeight),
                             cornerRadius = CornerRadius(
@@ -416,14 +402,18 @@ fun OccupationChart(data: PlaceDetailMock) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 5.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(
+                    horizontal = 5.dp,
+                    vertical = 5.dp
+                ),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            data.hours.forEach { hour ->
+            labelIndices.forEach { index ->
                 Text(
-                    text = String.format("%02d:00", hour),
+                    text = data.hours[index],
                     color = Color(0xFF9CA3B5),
-                    fontSize = 7.sp,
+                    fontSize = 8.sp,
                     maxLines = 1
                 )
             }
