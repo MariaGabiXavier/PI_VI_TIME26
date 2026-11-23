@@ -12,6 +12,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.flowcampus.ui.screens.analytics.AnalyticsScreen
 import com.example.flowcampus.ui.screens.auth.AuthSession
+import com.example.flowcampus.ui.screens.auth.UserRole
 import com.example.flowcampus.ui.screens.notifications.NotificationsScreen
 import com.example.flowcampus.ui.screens.notifications.rememberUnreadNotificationsCount
 import com.example.flowcampus.ui.screens.notifications.toEnvironmentId
@@ -31,9 +32,10 @@ fun HomeScreen(
     SetupPushNotifications()
     val userProfile by AuthSession.user.collectAsState()
     val userId = userProfile?.uid
+    val canManageEnvironments = userProfile?.role == UserRole.STAFF
 
-    var showAddEnvironment by remember {
-        mutableStateOf(false)
+    var environmentAction by remember(userId) {
+        mutableStateOf<EnvironmentAction?>(null)
     }
 
     var showEditProfile by remember {
@@ -216,14 +218,14 @@ fun HomeScreen(
 
     // Favoritos por cima da lista que já tem a previsão da IA
     val placesWithFavorites = placesWithForecast.map { place ->
-        place.copy(favorite = place.name.toEnvironmentId() in activity.favoriteIds)
+        place.copy(favorite = place.favoriteId in activity.favoriteIds)
     }
 
     val onFavoriteChange: (CampusPlace, Boolean) -> Unit = { place, favorite ->
         userId?.let { id ->
             profileRepository.setFavorite(
                 userId = id,
-                environmentId = place.name.toEnvironmentId(),
+                environmentId = place.favoriteId,
                 favorite = favorite
             )
         }
@@ -293,11 +295,11 @@ fun HomeScreen(
             ) {
                 NotificationsScreen(
                     onNotificationClick = { environmentId ->
-                        places.firstOrNull {
-                            it.firestoreId == environmentId ||
-                                    it.name.toEnvironmentId() == environmentId
-                        }
-                            ?.let { selectedPlace = it }
+                        val place = places.firstOrNull { it.firestoreId == environmentId }
+                            ?: places.firstOrNull {
+                                it.name.toEnvironmentId() == environmentId || it.favoriteId == environmentId
+                            }
+                        place?.let { selectedPlace = it }
                     }
                 )
             }
@@ -305,36 +307,16 @@ fun HomeScreen(
 
         AppScreen.PROFILE -> {
             val user = userProfile
+            val action = environmentAction
 
             when {
-                showAddEnvironment -> {
-                    AddEnvironmentScreen(
-                        onBack = {
-                            showAddEnvironment = false
-                        },
-
-                        onSave = { name, category, building, capacity, operatingHours, description ->
-                            val uid = userProfile?.uid
-
-                            if (uid.isNullOrBlank()) {
-                                Result.failure<Unit>(
-                                    IllegalStateException(
-                                        "Não foi possível identificar o usuário conectado."
-                                    )
-                                )
-                            } else {
-                                environmentRepository.addEnvironment(
-                                    name = name,
-                                    category = category,
-                                    building = building,
-                                    capacity = capacity,
-                                    operatingHours = operatingHours,
-                                    description = description,
-                                    createdBy = uid
-                                )
-                            }
-                        }
-
+                action != null && canManageEnvironments -> {
+                    EnvironmentManagementScreen(
+                        action = action,
+                        places = places,
+                        onBack = { environmentAction = null },
+                        onSave = environmentRepository::saveEnvironment,
+                        onDelete = environmentRepository::deleteEnvironment
                     )
                 }
 
@@ -372,9 +354,8 @@ fun HomeScreen(
                             onEditProfile = {
                                 showEditProfile = true
                             },
-                            onAddEnvironment = {
-                                showAddEnvironment = true
-                            },
+                            canManageEnvironments = canManageEnvironments,
+                            onManageEnvironment = { environmentAction = it },
                             onLogout = onLogout
                         )
                     }

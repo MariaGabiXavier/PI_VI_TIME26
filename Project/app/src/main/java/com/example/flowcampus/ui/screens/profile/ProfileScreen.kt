@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.flowcampus.ui.components.FormPrimaryButton
 import com.example.flowcampus.ui.screens.auth.UserProfile
-import com.example.flowcampus.ui.screens.auth.UserRole
+import com.example.flowcampus.ui.screens.home.EnvironmentAction
 import com.example.flowcampus.ui.screens.home.Blue
 import com.example.flowcampus.ui.screens.home.CampusPlace
 import com.example.flowcampus.ui.screens.home.DarkText
@@ -52,16 +52,14 @@ fun ProfileScreen(
     favoritePlaces: List<CampusPlace>,
     onPlaceClick: (CampusPlace) -> Unit,
     onEditProfile: () -> Unit,
-    onAddEnvironment: () -> Unit,
+    canManageEnvironments: Boolean,
+    onManageEnvironment: (EnvironmentAction) -> Unit,
     onLogout: () -> Unit
 ) {
 
     var showLogoutDialog by remember {
         mutableStateOf(false)
     }
-
-    // Só funcionário (Colaborador) cadastra ambiente; para estudante o botão não aparece
-    val isStaff = user?.role == UserRole.STAFF
 
     Column(
         modifier = Modifier
@@ -234,7 +232,7 @@ fun ProfileScreen(
 
                 items(
                     items = favoritePlaces,
-                    key = { it.name }
+                    key = { it.firestoreId.ifBlank { it.name } }
                 ) { place ->
 
                     FavoritePlaceCard(
@@ -251,6 +249,14 @@ fun ProfileScreen(
             modifier = Modifier.height(24.dp)
         )
 
+        if (canManageEnvironments) {
+            EnvironmentActions(onAction = onManageEnvironment)
+
+            Spacer(
+                modifier = Modifier.height(16.dp)
+            )
+        }
+
         FormPrimaryButton(
             text = "Editar Perfil",
             onClick = onEditProfile,
@@ -258,17 +264,6 @@ fun ProfileScreen(
             enabled = user != null,
             modifier = Modifier.padding(horizontal = 24.dp)
         )
-
-        if (isStaff) {
-
-            Spacer(
-                modifier = Modifier.height(8.dp)
-            )
-
-            AddEnvironmentButton(
-                onClick = onAddEnvironment
-            )
-        }
 
         Spacer(
             modifier = Modifier.height(24.dp)
