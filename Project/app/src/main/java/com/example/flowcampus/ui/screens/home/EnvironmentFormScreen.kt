@@ -1,6 +1,7 @@
 
 package com.example.flowcampus.ui.screens.home
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,35 +27,36 @@ import com.example.flowcampus.ui.components.FormSecondaryButton
 import com.example.flowcampus.ui.components.FormTextField
 import com.example.flowcampus.ui.components.LabeledField
 import com.example.flowcampus.ui.theme.AppGreen
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-fun AddEnvironmentScreen(
+fun EnvironmentFormScreen(
+    environment: CampusPlace? = null,
     onBack: () -> Unit,
-    onSave: suspend (
-        String,
-        PlaceIcon,
-        String,
-        Int,
-        String,
-        String
-    ) -> Result<Unit>
+    onSave: suspend (EnvironmentFormData) -> Result<Unit>
 ) {
-    var name by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf<PlaceIcon?>(null) }
-    var building by remember { mutableStateOf("") }
-    var capacity by remember { mutableStateOf("40") }
-    var operatingHours by remember { mutableStateOf("07:00 - 22:00") }
-    var description by remember { mutableStateOf("") }
+    val isEditing = environment != null
+    val environmentId = environment?.firestoreId
+    var name by rememberSaveable(environmentId) { mutableStateOf(environment?.name.orEmpty()) }
+    var category by rememberSaveable(environmentId) { mutableStateOf(environment?.iconType) }
+    var building by rememberSaveable(environmentId) { mutableStateOf(environment?.building.orEmpty()) }
+    var capacity by rememberSaveable(environmentId) { mutableStateOf((environment?.capacity ?: 40).toString()) }
+    var operatingHours by rememberSaveable(environmentId) {
+        mutableStateOf(environment?.operatingHours ?: "07:00 - 22:00")
+    }
+    var description by rememberSaveable(environmentId) { mutableStateOf(environment?.description.orEmpty()) }
 
     var error by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
 
+    BackHandler(enabled = isSaving) {}
+
     FormScreen(
-        title = "Cadastrar Ambiente",
-        subtitle = "Adicione um novo ambiente monitorado ao sistema.",
+        title = if (isEditing) "Editar Ambiente" else "Cadastrar Ambiente",
+        subtitle = if (isEditing) "Atualize os dados do ambiente." else "Adicione um novo ambiente monitorado ao sistema.",
         onBack = onBack,
         backEnabled = !isSaving
     ) {
@@ -173,56 +176,32 @@ fun AddEnvironmentScreen(
                 containerColor = AppGreen,
                 loading = isSaving,
                 onClick = {
-                    val parsedCapacity = capacity.toIntOrNull()
+                    if (isSaving) return@FormPrimaryButton
+                    val data = EnvironmentFormData(
+                        name = name.trim(),
+                        category = category,
+                        building = building.trim(),
+                        capacity = capacity.toIntOrNull() ?: 0,
+                        operatingHours = operatingHours.trim(),
+                        description = description.trim()
+                    )
+                    error = data.validationError(
+                        requireBuilding = environment?.building?.isBlank() != true,
+                        requireHours = environment?.operatingHours?.isBlank() != true
+                    )
+                    if (error != null) return@FormPrimaryButton
 
-                    when {
-                        name.isBlank() ->
-                            error = "Informe o nome do ambiente."
-
-                        category == null ->
-                            error = "Selecione uma categoria."
-
-                        building.isBlank() ->
-                            error = "Informe o prédio."
-
-                        parsedCapacity == null ||
-                            parsedCapacity <= 0 ->
-                            error = "Informe uma capacidade maior que zero."
-
-                        operatingHours.isBlank() ->
-                            error = "Informe o horário de funcionamento."
-
-                        else -> {
-                            scope.launch {
-                                isSaving = true
-                                error = null
-
-                                try {
-                                    val result = onSave(
-                                        name.trim(),
-                                        category!!,
-                                        building.trim(),
-                                        parsedCapacity,
-                                        operatingHours.trim(),
-                                        description.trim()
-                                    )
-
-                                    result.fold(
-                                        onSuccess = {
-                                            onBack()
-                                        },
-                                        onFailure = {
-                                            error = it.message
-                                                ?: "Não foi possível salvar o ambiente."
-                                        }
-                                    )
-                                } catch (e: Exception) {
-                                    error = e.message
-                                        ?: "Não foi possível salvar o ambiente."
-                                } finally {
-                                    isSaving = false
-                                }
-                            }
+                    isSaving = true
+                    scope.launch {
+                        try {
+                            onSave(data).getOrThrow()
+                            onBack()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            error = e.message ?: "Não foi possível salvar o ambiente."
+                        } finally {
+                            isSaving = false
                         }
                     }
                 }
