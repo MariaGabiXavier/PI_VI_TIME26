@@ -37,7 +37,7 @@ from .service import parse_now, run_forecast
 
 logger = logging.getLogger("flowcampus.notifier")
 
-TOPIC = "alerts"
+TOPIC_PREFIX = "env_"        # cada ambiente tem o seu tópico: env_<id do ambiente>
 CHANNEL_ID = "flowcampus_alerts"
 
 NOTIFICATIONS_COLLECTION = "notifications"
@@ -129,7 +129,7 @@ class Sender:
 
         try:
             messaging.send(messaging.Message(
-                topic=TOPIC,
+                topic=TOPIC_PREFIX + environment_id,   # só quem favoritou esse ambiente recebe
                 notification=messaging.Notification(
                     title=message["title"], body=message["description"]),
                 data={"environmentId": environment_id, "notificationId": doc_ref.id},

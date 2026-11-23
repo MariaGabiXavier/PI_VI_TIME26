@@ -59,7 +59,7 @@ fun rememberCurrentUserId(): String? {
     return userId
 }
 @Composable
-fun rememberUnreadNotificationsCount(): Int {
+fun rememberUnreadNotificationsCount(favoriteIds: Set<String>): Int {
 
     val repository = remember { NotificationsRepository() }
 
@@ -117,13 +117,17 @@ fun rememberUnreadNotificationsCount(): Int {
     val clearedDate = clearedAt
     val seenDate = seenAt
 
-    return notifications.count { notification ->
-        isUnread(notification, clearedDate, seenDate)
-    }
+    // Só conta as notificações dos ambientes favoritos
+    return notifications
+        .filter { it.environmentId in favoriteIds }
+        .count { notification ->
+            isUnread(notification, clearedDate, seenDate)
+        }
 }
 
 @Composable
 fun NotificationsScreen(
+    favoriteIds: Set<String> = emptySet(),
     onNotificationClick: (String) -> Unit = {}
 ) {
 
@@ -207,8 +211,10 @@ fun NotificationsScreen(
     val clearedDate = clearedAt
     val seenDate = seenAt
 
+    // Mostra só as notificações dos ambientes favoritos
     val visibleNotifications = notifications.filter { notification ->
-        isVisible(notification, clearedDate)
+        isVisible(notification, clearedDate) &&
+                notification.environmentId in favoriteIds
     }
 
     val filteredNotifications = when (selectedFilter) {
@@ -285,7 +291,7 @@ fun NotificationsScreen(
                     text = when {
                         isLoading -> "Carregando..."
                         hasError -> "Não foi possível carregar as notificações."
-                        else -> "Nenhuma notificação por aqui."
+                        else -> if (favoriteIds.isEmpty()) "Favorite um ambiente para receber alertas dele." else "Nenhuma notificação por aqui."
                     },
                     color = GrayText,
                     fontSize = 13.sp

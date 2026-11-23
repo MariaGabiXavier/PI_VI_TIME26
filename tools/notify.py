@@ -18,7 +18,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 
 # Tem que ser igual ao que está no app (NotificationsPush.kt)
-TOPIC = "alerts"
+TOPIC_PREFIX = "env_"   # cada ambiente tem o seu tópico: env_<id do ambiente>
 CHANNEL_ID = "flowcampus_alerts"
 
 # A chave de serviço fica ao lado deste arquivo, com este nome
@@ -38,7 +38,7 @@ db = firestore.client()
 def send_push_to_topic(title, body, environment_id="", notification_id=""):
     """Envia o push para todos os celulares inscritos no tópico."""
     message = messaging.Message(
-        topic=TOPIC,
+        topic=TOPIC_PREFIX + environment_id,   # só quem favoritou esse ambiente recebe
         notification=messaging.Notification(title=title, body=body),
         # data só aceita texto
         data={

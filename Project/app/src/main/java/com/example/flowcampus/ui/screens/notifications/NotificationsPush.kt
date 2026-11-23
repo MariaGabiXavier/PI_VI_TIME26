@@ -37,10 +37,16 @@ fun createPushChannel(context: Context) {
     }
 }
 
-// Chamar uma vez na tela principal (depois do login):
-// cria o canal, pede permissão (Android 13+) e inscreve o aparelho no tópico
+
+fun topicForEnvironment(environmentId: String): String {
+    return "env_$environmentId"
+}
+
 @Composable
-fun SetupPushNotifications() {
+fun SetupPushNotifications(
+    favoriteIds: Set<String>,
+    allIds: Set<String>
+) {
 
     val context = LocalContext.current
 
@@ -49,11 +55,23 @@ fun SetupPushNotifications() {
         onResult = { }
     )
 
-    LaunchedEffect(Unit) {
+    // Roda de novo toda vez que a lista de favoritos mudar
+    LaunchedEffect(favoriteIds, allIds) {
 
         createPushChannel(context)
 
-        FirebaseMessaging.getInstance().subscribeToTopic(PUSH_TOPIC)
+        val messaging = FirebaseMessaging.getInstance()
+
+        // Saiu do tópico geral antigo (que mandava tudo para todo mundo)
+        messaging.unsubscribeFromTopic(PUSH_TOPIC)
+
+        allIds.forEach { id ->
+            if (id in favoriteIds) {
+                messaging.subscribeToTopic(topicForEnvironment(id))
+            } else {
+                messaging.unsubscribeFromTopic(topicForEnvironment(id))
+            }
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 

@@ -29,7 +29,6 @@ import com.example.flowcampus.ui.screens.profile.UserActivity
 fun HomeScreen(
     onLogout: () -> Unit
 ) {
-    SetupPushNotifications()
     val userProfile by AuthSession.user.collectAsState()
     val userId = userProfile?.uid
     val canManageEnvironments = userProfile?.role == UserRole.STAFF
@@ -135,8 +134,6 @@ fun HomeScreen(
         )
     }
 
-    val unreadCount = rememberUnreadNotificationsCount()
-
     DisposableEffect(environmentRepository) {
         val listener = environmentRepository.listenEnvironments(
             onUpdate = { updatedPlaces ->
@@ -221,6 +218,24 @@ fun HomeScreen(
         place.copy(favorite = place.favoriteId in activity.favoriteIds)
     }
 
+    // Ids do Firestore dos ambientes favoritos (é o id que vai nas notificações)
+    val favoriteEnvironmentIds = placesWithFavorites
+        .filter { it.favorite }
+        .map { it.firestoreId }
+        .toSet()
+
+    val allEnvironmentIds = placesWithFavorites
+        .map { it.firestoreId }
+        .toSet()
+
+    // Só recebe push dos ambientes favoritos
+    SetupPushNotifications(
+        favoriteIds = favoriteEnvironmentIds,
+        allIds = allEnvironmentIds
+    )
+
+    val unreadCount = rememberUnreadNotificationsCount(favoriteEnvironmentIds)
+
     val onFavoriteChange: (CampusPlace, Boolean) -> Unit = { place, favorite ->
         userId?.let { id ->
             profileRepository.setFavorite(
@@ -294,6 +309,7 @@ fun HomeScreen(
                 alertsBadgeCount = unreadCount
             ) {
                 NotificationsScreen(
+                    favoriteIds = favoriteEnvironmentIds,
                     onNotificationClick = { environmentId ->
                         val place = places.firstOrNull { it.firestoreId == environmentId }
                             ?: places.firstOrNull {
