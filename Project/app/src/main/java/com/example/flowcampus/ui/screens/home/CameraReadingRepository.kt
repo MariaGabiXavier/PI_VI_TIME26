@@ -106,7 +106,7 @@ class CameraReadingRepository(
         onUpdate: (List<CameraReading>) -> Unit,
         onError: (Exception) -> Unit
     ): List<ListenerRegistration> {
-        val zone = ZoneId.systemDefault()
+        val zone = ZoneId.of("America/Sao_Paulo")
         val start = LocalDate.now(zone).atTime(7, 0).atZone(zone).toInstant()
         val end = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant()
         val startTimestamp = Timestamp(Date.from(start))

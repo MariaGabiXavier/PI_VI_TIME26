@@ -3,6 +3,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
+from pathlib import Path
 import random
 
 
@@ -10,9 +11,10 @@ import random
 # CONEXÃO COM O FIREBASE
 # ==========================================
 
-cred = credentials.Certificate(
-    "../../VisaoComputacional/flowcampus-admin.json"
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FIREBASE_KEY = PROJECT_ROOT / "VisaoComputacional" / "flowcampus-admin.json"
+
+cred = credentials.Certificate(str(FIREBASE_KEY))
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
@@ -23,48 +25,39 @@ db = firestore.client()
 # ==========================================
 # AMBIENTES
 # ==========================================
+# A lista é carregada do Firestore para que o seed funcione com TODOS
+# os ambientes cadastrados no aplicativo, inclusive os criados recentemente.
+ambientes = []
+for documento in db.collection("environments").stream():
+    dados = documento.to_dict() or {}
+    nome = dados.get("name")
+    capacidade = dados.get("capacity", 40)
 
-ambientes = [
-    {
-        "id": "biblioteca",
-        "name": "Biblioteca",
-        "capacity": 80
-    },
-    {
-        "id": "lab-a2",
-        "name": "Lab A2",
-        "capacity": 40
-    },
-    {
-        "id": "ponto-de-onibus",
-        "name": "Ponto de ônibus",
-        "capacity": 70
-    },
-    {
-        "id": "refeitorio",
-        "name": "Refeitório",
-        "capacity": 120
-    },
-    {
-        "id": "sala-estudo-7a",
-        "name": "Sala Estudo - 7A",
-        "capacity": 80
-    }
-]
+    if nome:
+        ambientes.append({
+            "id": documento.id,
+            "name": nome,
+            "capacity": max(1, int(capacidade or 40))
+        })
+
+if not ambientes:
+    raise RuntimeError(
+        "Nenhum ambiente encontrado na coleção 'environments'. "
+        "Cadastre os ambientes no aplicativo antes de executar o seed."
+    )
 
 
 # ==========================================
 # CONFIGURAÇÕES
 # ==========================================
 
-inicio = date(2026, 11, 20)
-fim = date(2026, 11, 21)
-
 fuso = ZoneInfo("America/Sao_Paulo")
 
-# Horários das leituras simuladas: 07h até 22h
-#horarios = range(7, 23)
+# Definir manualmente o período dos testes
+inicio = date(2026, 11, 23)
+fim = date(2026, 11, 23)
 
+# Horários das leituras simuladas: 07h até o horário atual
 hora_atual = datetime.now(fuso).hour
 horarios = range(7, min(hora_atual, 22) + 1)
 

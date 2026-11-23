@@ -334,26 +334,15 @@ def forecast_hours(
         if environment_history.empty:
             continue
 
-        # Identifica os horários em que o ambiente funcionou
-        # nos últimos 14 dias em relação ao momento atual.
-        recent = environment_history[
-            (environment_history["ts"] >= recent_start)
-            & (environment_history["ts"] <= reference)
-        ]
-
-        open_hours = set(
-            recent["ts"].dt.hour.tolist()
-        )
-
-        if not open_hours:
-            continue
-
+        # O gráfico do FlowCampus tem uma grade padronizada para todos
+        # os ambientes: intervalos de 07:00 até 22:00 (07-08 ... 22-23).
+        # Não filtrar pela presença de leituras recentes em cada hora,
+        # pois isso fazia cada ambiente receber quantidades diferentes de pontos.
         for k in range(horizon_hours):
 
             moment = first + pd.Timedelta(hours=k)
 
-            # Não prevê horários em que o ambiente não costuma funcionar.
-            if moment.hour not in open_hours:
+            if moment.hour not in range(7, 23):
                 continue
 
             lag7 = known.get(
@@ -384,9 +373,13 @@ def forecast_hours(
                     moment,
                 )
 
-                # Sem amostras suficientes, não inventa previsão.
+                # Fallback determinístico do próprio ambiente: quando não há
+                # amostras suficientes para aquele horário, usa a mediana
+                # histórica geral do ambiente. Não cria dados aleatórios.
                 if baseline is None:
-                    continue
+                    baseline = float(
+                        environment_history["occupancyPercent"].median()
+                    )
 
                 lag14_feature = baseline
 

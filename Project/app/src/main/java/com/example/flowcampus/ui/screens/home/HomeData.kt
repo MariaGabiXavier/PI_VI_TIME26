@@ -166,10 +166,16 @@ fun getPlaceDetail(
     now: OffsetDateTime = OffsetDateTime.now()
 ): PlaceDetailMock {
     val capacity = place.capacity.coerceAtLeast(1)
-    val zone = ZoneId.systemDefault()
+    // O Firestore e o serviço de IA usam o horário de Brasília.
+    // Não depender do fuso configurado no emulador/celular.
+    val zone = ZoneId.of("America/Sao_Paulo")
     val today = now.atZoneSameInstant(zone).toLocalDate()
     val currentHour = now.atZoneSameInstant(zone).hour
     val chartHours = (7..22).toList()
+
+    // A API gera a primeira previsão na próxima hora cheia.
+    // A hora atual fica no lado dos dados observados (câmera ou seed).
+    val firstForecastHour = currentHour + 1
 
     // Cada leitura é agrupada pela hora local em que ocorreu. A câmera tem
     // prioridade sobre registros simulados, quando ambos existem na mesma hora.
@@ -186,13 +192,17 @@ fun getPlaceDetail(
         } ?: readings.maxByOrNull { it.timestamp?.toDate()?.time ?: 0L }
     }
 
-    // O serviço pode devolver 48h. Aqui entram somente as previsões de hoje,
-    // das 07h às 23h, e apenas a hora atual em diante.
+    // O timestamp da API já identifica o início da hora prevista:
+    // 17:00 representa a barra 17h-18h. Não subtrair uma hora.
     val forecastByHour = forecast?.points.orEmpty().mapNotNull { point ->
         val parsed = parseForecastTime(point.timestamp) ?: return@mapNotNull null
-        val local = parsed.atZoneSameInstant(zone)
-        if (local.toLocalDate() == today && local.hour in 7..22 && local.hour >= currentHour) {
-            local.hour to (point to local)
+        val forecastTime = parsed.atZoneSameInstant(zone)
+        if (
+            forecastTime.toLocalDate() == today &&
+            forecastTime.hour in 7..22 &&
+            forecastTime.hour >= firstForecastHour
+        ) {
+            forecastTime.hour to (point to forecastTime)
         } else null
     }.groupBy({ it.first }, { it.second }).mapValues { (_, points) ->
         points.maxByOrNull { it.second.minute }
@@ -203,14 +213,15 @@ fun getPlaceDetail(
     val isForecast = mutableListOf<Boolean>()
 
     chartHours.forEach { hour ->
-        if (hour < currentHour) {
-            // Hora encerrada: somente dado real. Sem leitura, barra vazia.
+        if (hour < firstForecastHour) {
+            // Intervalo já iniciado/concluído: somente leitura real ou simulada.
+            // Sem leitura, permanece vazio; não substituímos por previsão.
             val reading = actualByHour[hour]
             values += reading?.people?.coerceIn(0, capacity) ?: 0
             hasData += reading != null
             isForecast += false
         } else {
-            // Hora atual e futuras: previsão da IA até que a hora termine.
+            // Intervalos ainda não iniciados: previsão da IA, se disponível.
             val prediction = forecastByHour[hour]?.first
             values += prediction?.predictedPeople?.coerceIn(0, capacity) ?: 0
             hasData += prediction != null
