@@ -33,6 +33,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,7 +60,23 @@ fun PlaceDetailScreen(
     forecast: AiEnvironmentForecast?,
     onBack: () -> Unit
 ) {
-    val data = getPlaceDetail(place, forecast)
+    var realReadings by remember(place.firestoreId) {
+        mutableStateOf<List<CameraReading>>(emptyList())
+    }
+    val repository = remember { CameraReadingRepository() }
+
+    DisposableEffect(repository, place.firestoreId) {
+        val listeners = repository.listenTodayReadings(
+            environmentId = place.firestoreId,
+            onUpdate = { readings -> realReadings = readings },
+            onError = { error ->
+                android.util.Log.e("OccupationChart", "Erro ao carregar histórico", error)
+            }
+        )
+        onDispose { listeners.forEach { it.remove() } }
+    }
+
+    val data = getPlaceDetail(place, forecast, realReadings)
 
     Column(
         modifier = Modifier
@@ -201,27 +222,14 @@ fun PlaceDetailScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF63C58A))
-                        )
-
-                        Spacer(
-                            modifier = Modifier.width(3.dp)
-                        )
-
-                        Text(
-                            text = "Previsão IA",
-                            color = GrayText,
-                            fontSize = 8.sp
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF1685F8)))
+                        Spacer(Modifier.width(3.dp))
+                        Text("Hoje", color = GrayText, fontSize = 8.sp)
+                        Spacer(Modifier.width(7.dp))
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF63C58A)))
+                        Spacer(Modifier.width(3.dp))
+                        Text("Previsão IA", color = GrayText, fontSize = 8.sp)
                     }
                 }
             }
@@ -322,100 +330,62 @@ fun DetailInfoCard(
 @Composable
 fun OccupationChart(data: PlaceDetailMock) {
     val capacity = data.capacity.coerceAtLeast(1)
-    val count = minOf(data.hourlyPeople.size, data.hours.size)
+    val rawStep = kotlin.math.ceil(capacity / 8.0).toInt().coerceAtLeast(1)
+    val magnitude = Math.pow(10.0, Math.floor(Math.log10(rawStep.toDouble()))).toInt().coerceAtLeast(1)
+    val normalized = rawStep.toDouble() / magnitude
+    val step = (when { normalized <= 1.0 -> 1; normalized <= 2.0 -> 2; normalized <= 5.0 -> 5; else -> 10 } * magnitude)
+    val ticks = (0..capacity step step).toList().let { if (it.lastOrNull() == capacity) it else it + capacity }
+    val count = minOf(data.hourlyPeople.size, data.hours.size, data.chartHasData.size)
 
-    // Exibe no máximo quatro horários para evitar sobreposição.
-    val labelIndices = when {
-        data.hours.isEmpty() -> emptyList()
-        data.hours.size <= 4 -> data.hours.indices.toList()
-        else -> listOf(
-            0,
-            data.hours.size / 3,
-            (data.hours.size * 2) / 3,
-            data.hours.lastIndex
-        ).distinct()
-    }
-
-    Column(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Column(Modifier.fillMaxWidth()) {
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(145.dp),
+            modifier = Modifier.fillMaxWidth().height(165.dp),
             shape = RoundedCornerShape(17.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 0.dp
-            )
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 14.dp,
-                        bottom = 18.dp
-                    )
-            ) {
-                if (count > 0) {
+            Row(Modifier.fillMaxSize().padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)) {
+                Column(
+                    modifier = Modifier.width(27.dp).fillMaxSize(),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                    horizontalAlignment = Alignment.End
+                ) {
+                    ticks.reversed().forEach { tick ->
+                        Text(tick.toString(), color = Color(0xFF9CA3B5), fontSize = 8.sp, maxLines = 1)
+                    }
+                }
+                Spacer(Modifier.width(7.dp))
+                Canvas(Modifier.weight(1f).fillMaxSize()) {
                     val chartHeight = size.height
-                    val slotWidth = size.width / count
-
-                    val barWidth = (
-                        slotWidth * 0.7f
-                    ).coerceAtLeast(2.dp.toPx())
-
+                    val slotWidth = if (count > 0) size.width / count else size.width
+                    val barWidth = (slotWidth * 0.62f).coerceAtLeast(2.dp.toPx())
+                    ticks.forEach { tick ->
+                        val y = chartHeight - (tick.toFloat() / capacity) * chartHeight
+                        drawLine(Color(0xFFE9EDF4), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                    }
                     repeat(count) { index ->
-                        val people = data.hourlyPeople[index]
-
-                        val percentage = (
-                            people.toFloat() / capacity
-                        ).coerceIn(0f, 1f)
-
-                        val barHeight = (
-                            percentage * chartHeight
-                        ).coerceAtLeast(3.dp.toPx())
-
-                        val x = index * slotWidth +
-                            (slotWidth - barWidth) / 2f
-
-                        val y = chartHeight - barHeight
-
+                        if (!data.chartHasData[index]) return@repeat
+                        val people = data.hourlyPeople[index].coerceIn(0, capacity)
+                        if (people <= 0) return@repeat
+                        val barHeight = (people.toFloat() / capacity) * chartHeight
+                        val x = index * slotWidth + (slotWidth - barWidth) / 2f
                         drawRoundRect(
-                            color = Color(0xFF71C997),
-                            topLeft = Offset(x, y),
+                            color = if (data.chartIsForecast.getOrElse(index) { false }) Color(0xFF63C58A) else Color(0xFF1685F8),
+                            topLeft = Offset(x, chartHeight - barHeight),
                             size = Size(barWidth, barHeight),
-                            cornerRadius = CornerRadius(
-                                4.dp.toPx(),
-                                4.dp.toPx()
-                            )
+                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
                         )
                     }
                 }
             }
         }
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 5.dp,
-                    vertical = 5.dp
-                ),
+            Modifier.fillMaxWidth().padding(start = 36.dp, end = 2.dp, top = 5.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            labelIndices.forEach { index ->
-                Text(
-                    text = data.hours[index],
-                    color = Color(0xFF9CA3B5),
-                    fontSize = 8.sp,
-                    maxLines = 1
-                )
+            data.hours.forEach { hour ->
+                Text(hour.take(2) + "h", color = Color(0xFF9CA3B5), fontSize = 7.sp, maxLines = 1)
             }
         }
     }

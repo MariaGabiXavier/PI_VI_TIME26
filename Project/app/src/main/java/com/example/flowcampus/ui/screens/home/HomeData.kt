@@ -13,6 +13,7 @@ import kotlin.math.roundToInt
 import com.example.flowcampus.ai.AiEnvironmentForecast
 import java.time.Duration
 import java.time.OffsetDateTime
+import java.time.ZoneId
 
 val BackgroundColor = AppBackground
 val Blue = AppBlue
@@ -144,6 +145,8 @@ data class PlaceDetailMock(
     val recommendationTime: String,
     val hourlyPeople: List<Int> = emptyList(),
     val hours: List<String> = emptyList(),
+    val chartHasData: List<Boolean> = emptyList(),
+    val chartIsForecast: List<Boolean> = emptyList(),
     val minutesUntilRecommendation: Int = 0,
     val recommendationStatus: String = "Sem previsão"
 )
@@ -159,94 +162,73 @@ private fun parseForecastTime(value: String): OffsetDateTime? {
 fun getPlaceDetail(
     place: CampusPlace,
     forecast: AiEnvironmentForecast?,
+    realReadings: List<CameraReading> = emptyList(),
     now: OffsetDateTime = OffsetDateTime.now()
 ): PlaceDetailMock {
-
     val capacity = place.capacity.coerceAtLeast(1)
+    val zone = ZoneId.systemDefault()
+    val today = now.atZoneSameInstant(zone).toLocalDate()
+    val currentHour = now.atZoneSameInstant(zone).hour
+    val chartHours = (7..22).toList()
 
-    // Sem previsão disponível: não inventa dados.
-    if (forecast == null || forecast.points.isEmpty()) {
-        return PlaceDetailMock(
-            people = place.people,
-            waitingTime = 0,
-            peakTime = "--",
-            capacity = capacity,
-            recommendationPeople = 0,
-            recommendationTime = "--"
-        )
+    // Cada leitura é agrupada pela hora local em que ocorreu. A câmera tem
+    // prioridade sobre registros simulados, quando ambos existem na mesma hora.
+    val readingsByHour = realReadings.mapNotNull { reading ->
+        val instant = reading.timestamp?.toDate()?.toInstant() ?: return@mapNotNull null
+        val local = instant.atZone(zone)
+        if (local.toLocalDate() != today || local.hour !in 7..22) null
+        else local.hour to reading
+    }.groupBy({ it.first }, { it.second })
+
+    val actualByHour = readingsByHour.mapValues { (_, readings) ->
+        readings.filter { it.source != "simulated" }.maxByOrNull {
+            it.timestamp?.toDate()?.time ?: 0L
+        } ?: readings.maxByOrNull { it.timestamp?.toDate()?.time ?: 0L }
     }
 
-    val validPoints = forecast.points.mapNotNull { point ->
-        val timestamp = parseForecastTime(point.timestamp)
-        if (timestamp != null) {
-            point to timestamp
+    // O serviço pode devolver 48h. Aqui entram somente as previsões de hoje,
+    // das 07h às 23h, e apenas a hora atual em diante.
+    val forecastByHour = forecast?.points.orEmpty().mapNotNull { point ->
+        val parsed = parseForecastTime(point.timestamp) ?: return@mapNotNull null
+        val local = parsed.atZoneSameInstant(zone)
+        if (local.toLocalDate() == today && local.hour in 7..22 && local.hour >= currentHour) {
+            local.hour to (point to local)
+        } else null
+    }.groupBy({ it.first }, { it.second }).mapValues { (_, points) ->
+        points.maxByOrNull { it.second.minute }
+    }
+
+    val values = mutableListOf<Int>()
+    val hasData = mutableListOf<Boolean>()
+    val isForecast = mutableListOf<Boolean>()
+
+    chartHours.forEach { hour ->
+        if (hour < currentHour) {
+            // Hora encerrada: somente dado real. Sem leitura, barra vazia.
+            val reading = actualByHour[hour]
+            values += reading?.people?.coerceIn(0, capacity) ?: 0
+            hasData += reading != null
+            isForecast += false
         } else {
-            null
+            // Hora atual e futuras: previsão da IA até que a hora termine.
+            val prediction = forecastByHour[hour]?.first
+            values += prediction?.predictedPeople?.coerceIn(0, capacity) ?: 0
+            hasData += prediction != null
+            isForecast += prediction != null
         }
     }
 
-    if (validPoints.isEmpty()) {
-        return PlaceDetailMock(
-            people = place.people,
-            waitingTime = 0,
-            peakTime = "--",
-            capacity = capacity,
-            recommendationPeople = 0,
-            recommendationTime = "--"
-        )
-    }
-
-    // Usa todos os pontos válidos da previsão, inclusive os de amanhã.
-    val chartPoints = validPoints.sortedBy { it.second }
-
-    val hours = chartPoints.map { (_, time) ->
-        if (time.toLocalDate() == now.toLocalDate()) {
-            "%02d:%02d".format(time.hour, time.minute)
-        } else {
-            "%02d/%02d %02d:%02d".format(
-                time.dayOfMonth,
-                time.monthValue,
-                time.hour,
-                time.minute
-            )
-        }
-    }
-
-    val hourlyPeople = chartPoints.map { it.first.predictedPeople }
-
-    // Horário de maior ocupação previsto pela IA.
-    val peakPoint = validPoints.maxByOrNull {
-        it.first.predictedOccupancyPercent
-    }
-
-    val peakTime = peakPoint?.second?.let {
-        "%02d:%02d".format(it.hour, it.minute)
-    } ?: "--"
-
-    // Melhor horário futuro previsto pela IA.
-    val bestPoint = validPoints
-        .filter { it.second.isAfter(now) }
-        .minByOrNull { it.first.predictedOccupancyPercent }
-
-    val recommendationTime = bestPoint?.second?.let {
-        "%02d:%02d".format(it.hour, it.minute)
-    } ?: "--"
-
+    val futurePoints = forecastByHour.values.mapNotNull { it }
+    val peakPoint = futurePoints.maxByOrNull { it.first.predictedOccupancyPercent }
+    val bestPoint = futurePoints.minByOrNull { it.first.predictedOccupancyPercent }
+    val peakTime = peakPoint?.second?.let { "%02d:00".format(it.hour) } ?: "--"
+    val recommendationTime = bestPoint?.second?.let { "%02d:00".format(it.hour) } ?: "--"
     val recommendationPeople = bestPoint?.first?.predictedPeople ?: 0
-
     val recommendationStatus = bestPoint?.first?.predictedOccupancyPercent?.let {
-        when {
-            it >= 70 -> "Alto"
-            it >= 40 -> "Médio"
-            else -> "Baixo"
-        }
+        when { it >= 70 -> "Alto"; it >= 40 -> "Médio"; else -> "Baixo" }
     } ?: "Sem previsão"
-
-    // Tempo até o melhor horário.
     val waitingTime = bestPoint?.second?.let {
-        Duration.between(now, it).toMinutes()
-            .coerceAtLeast(0)
-            .toInt()
+        Duration.between(now, it.toOffsetDateTime()).toMinutes().coerceAtLeast(0).toInt()
     } ?: 0
 
     return PlaceDetailMock(
@@ -256,8 +238,10 @@ fun getPlaceDetail(
         capacity = capacity,
         recommendationPeople = recommendationPeople,
         recommendationTime = recommendationTime,
-        hourlyPeople = hourlyPeople,
-        hours = hours,
+        hourlyPeople = values,
+        hours = (7..23).map { "%02d:00".format(it) },
+        chartHasData = hasData,
+        chartIsForecast = isForecast,
         minutesUntilRecommendation = waitingTime,
         recommendationStatus = recommendationStatus
     )
