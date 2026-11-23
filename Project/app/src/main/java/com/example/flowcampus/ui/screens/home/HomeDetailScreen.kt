@@ -187,7 +187,7 @@ fun PlaceDetailScreen(
 
                     DetailInfoCard(
                         title = "Espera de",
-                        value = "${data.waitingTime} min",
+                        value = formatWaitingTime(data.waitingTime),
                         icon = Icons.Default.Timer,
                         modifier = Modifier.weight(1f)
                     )
@@ -257,6 +257,24 @@ fun PlaceDetailScreen(
             }
 
         }
+    }
+}
+
+fun formatWaitingTime(minutes: Int): String {
+    val totalMinutes = minutes.coerceAtLeast(0)
+
+    if (totalMinutes < 60) {
+        return if (totalMinutes == 1) "1 min" else "$totalMinutes min"
+    }
+
+    val hours = totalMinutes / 60
+    val remainingMinutes = totalMinutes % 60
+
+    return when {
+        remainingMinutes == 0 && hours == 1 -> "1 hora"
+        remainingMinutes == 0 -> "$hours horas"
+        hours == 1 -> "1h ${remainingMinutes}min"
+        else -> "${hours}h ${remainingMinutes}min"
     }
 }
 
