@@ -143,7 +143,7 @@ fun HomeContent(
                     Text(
                         text = "Bom Dia 👋",
                         color = GrayText,
-                        fontSize = 12.sp
+                        fontSize = 13.sp
                     )
 
                     Spacer(
@@ -153,7 +153,7 @@ fun HomeContent(
                     Text(
                         text = user?.name ?: "Visitante",
                         color = DarkText,
-                        fontSize = 19.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -175,7 +175,7 @@ fun HomeContent(
                     Text(
                         text = user?.initials ?: "?",
                         color = DarkText,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -207,7 +207,7 @@ fun HomeContent(
             Text(
                 text = "Campus Status",
                 color = DarkText,
-                fontSize = 14.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
@@ -215,7 +215,7 @@ fun HomeContent(
             Text(
                 text = "Ver Tudo",
                 color = Blue,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.clickable {
                     onSeeAllClick()
@@ -239,7 +239,7 @@ fun HomeContent(
                 Text(
                     text = "Nenhum local encontrado",
                     color = GrayText,
-                    fontSize = 13.sp
+                    fontSize = 12.sp
                 )
             }
 
@@ -281,10 +281,10 @@ fun SearchBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(45.dp)
+            .height(40.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(Color.White)
-            .padding(horizontal = 13.dp),
+            .padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
@@ -292,7 +292,7 @@ fun SearchBar(
             imageVector = Icons.Default.Search,
             contentDescription = "Pesquisar",
             tint = Color(0xFF9DA5BA),
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(18.dp)
         )
 
         Spacer(
@@ -306,7 +306,7 @@ fun SearchBar(
 
             textStyle = TextStyle(
                 color = DarkText,
-                fontSize = 11.sp
+                fontSize = 12.sp
             ),
 
             modifier = Modifier.weight(1f),
@@ -330,7 +330,7 @@ fun SearchBar(
             imageVector = Icons.Default.Tune,
             contentDescription = "Filtros",
             tint = Blue,
-            modifier = Modifier.size(19.dp)
+            modifier = Modifier.size(18.dp)
         )
     }
 }
@@ -406,7 +406,7 @@ fun CampusStatusCard(
             Text(
                 text = place.name,
                 color = DarkText,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -423,7 +423,7 @@ fun CampusStatusCard(
                     "${place.people} pessoas"
                 },
                 color = GrayText,
-                fontSize = 9.sp
+                fontSize = 11.sp
             )
 
             Spacer(
@@ -453,7 +453,7 @@ fun CampusStatusCard(
                         "${place.minutes} min"
                     },
                     color = GrayText,
-                    fontSize = 10.sp,
+                    fontSize = 11.sp,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Clip

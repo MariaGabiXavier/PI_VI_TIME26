@@ -53,6 +53,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.flowcampus.ai.AiEnvironmentForecast
+import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun PlaceDetailScreen(
@@ -217,7 +218,7 @@ fun PlaceDetailScreen(
                     Text(
                         text = "Ocupação Por Tempo",
                         color = DarkText,
-                        fontSize = 13.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
@@ -225,11 +226,11 @@ fun PlaceDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF1685F8)))
                         Spacer(Modifier.width(3.dp))
-                        Text("Hoje", color = GrayText, fontSize = 8.sp)
+                        Text("Hoje", color = GrayText, fontSize = 11.sp)
                         Spacer(Modifier.width(7.dp))
                         Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF63C58A)))
                         Spacer(Modifier.width(3.dp))
-                        Text("Previsão IA", color = GrayText, fontSize = 8.sp)
+                        Text("Previsão IA", color = GrayText, fontSize = 11.sp)
                     }
                 }
             }
@@ -243,7 +244,7 @@ fun PlaceDetailScreen(
                 Text(
                     text = "Recomendação da IA",
                     color = DarkText,
-                    fontSize = 13.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -298,7 +299,7 @@ fun DetailInfoCard(
                 Text(
                     text = title,
                     color = GrayText,
-                    fontSize = 8.sp,
+                    fontSize = 11.sp,
                     modifier = Modifier.weight(1f),
                     maxLines = 1
                 )
@@ -318,7 +319,7 @@ fun DetailInfoCard(
             Text(
                 text = value,
                 color = DarkText,
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
@@ -327,65 +328,179 @@ fun DetailInfoCard(
 }
 
 
+
 @Composable
 fun OccupationChart(data: PlaceDetailMock) {
     val capacity = data.capacity.coerceAtLeast(1)
-    val rawStep = kotlin.math.ceil(capacity / 8.0).toInt().coerceAtLeast(1)
-    val magnitude = Math.pow(10.0, Math.floor(Math.log10(rawStep.toDouble()))).toInt().coerceAtLeast(1)
+
+    val rawStep = kotlin.math.ceil(capacity / 8.0)
+        .toInt()
+        .coerceAtLeast(1)
+
+    val magnitude = Math.pow(
+        10.0,
+        Math.floor(Math.log10(rawStep.toDouble()))
+    ).toInt().coerceAtLeast(1)
+
     val normalized = rawStep.toDouble() / magnitude
-    val step = (when { normalized <= 1.0 -> 1; normalized <= 2.0 -> 2; normalized <= 5.0 -> 5; else -> 10 } * magnitude)
-    val ticks = (0..capacity step step).toList().let { if (it.lastOrNull() == capacity) it else it + capacity }
-    val count = minOf(data.hourlyPeople.size, data.hours.size, data.chartHasData.size)
+
+    val step = (
+        when {
+            normalized <= 1.0 -> 1
+            normalized <= 2.0 -> 2
+            normalized <= 5.0 -> 5
+            else -> 10
+        } * magnitude
+    )
+
+    val ticks = (0..capacity step step).toList().let {
+        if (it.lastOrNull() == capacity) it else it + capacity
+    }
+
+    val count = minOf(
+        data.hourlyPeople.size,
+        data.hours.size,
+        data.chartHasData.size
+    )
 
     Column(Modifier.fillMaxWidth()) {
+
         Card(
-            modifier = Modifier.fillMaxWidth().height(165.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(165.dp),
             shape = RoundedCornerShape(17.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 0.dp
+            )
         ) {
-            Row(Modifier.fillMaxSize().padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp)) {
+
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = 8.dp,
+                        end = 12.dp,
+                        top = 12.dp,
+                        bottom = 12.dp
+                    )
+            ) {
+
                 Column(
-                    modifier = Modifier.width(27.dp).fillMaxSize(),
+                    modifier = Modifier
+                        .width(30.dp)
+                        .fillMaxSize(),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {
                     ticks.reversed().forEach { tick ->
-                        Text(tick.toString(), color = Color(0xFF9CA3B5), fontSize = 8.sp, maxLines = 1)
+                        Text(
+                            text = tick.toString(),
+                            color = Color(0xFF9CA3B5),
+                            fontSize = 9.sp,
+                            maxLines = 1
+                        )
                     }
                 }
+
                 Spacer(Modifier.width(7.dp))
-                Canvas(Modifier.weight(1f).fillMaxSize()) {
+
+                Canvas(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                ) {
                     val chartHeight = size.height
-                    val slotWidth = if (count > 0) size.width / count else size.width
-                    val barWidth = (slotWidth * 0.62f).coerceAtLeast(2.dp.toPx())
-                    ticks.forEach { tick ->
-                        val y = chartHeight - (tick.toFloat() / capacity) * chartHeight
-                        drawLine(Color(0xFFE9EDF4), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                    val slotWidth = if (count > 0) {
+                        size.width / count
+                    } else {
+                        size.width
                     }
+
+                    val barWidth = (slotWidth * 0.62f)
+                        .coerceAtLeast(2.dp.toPx())
+
+                    ticks.forEach { tick ->
+                        val y = chartHeight -
+                            (tick.toFloat() / capacity) * chartHeight
+
+                        drawLine(
+                            color = Color(0xFFE9EDF4),
+                            start = Offset(0f, y),
+                            end = Offset(size.width, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
                     repeat(count) { index ->
+
                         if (!data.chartHasData[index]) return@repeat
-                        val people = data.hourlyPeople[index].coerceIn(0, capacity)
+
+                        val people = data.hourlyPeople[index]
+                            .coerceIn(0, capacity)
+
                         if (people <= 0) return@repeat
-                        val barHeight = (people.toFloat() / capacity) * chartHeight
-                        val x = index * slotWidth + (slotWidth - barWidth) / 2f
+
+                        val barHeight =
+                            (people.toFloat() / capacity) * chartHeight
+
+                        val x = index * slotWidth +
+                            (slotWidth - barWidth) / 2f
+
                         drawRoundRect(
-                            color = if (data.chartIsForecast.getOrElse(index) { false }) Color(0xFF63C58A) else Color(0xFF1685F8),
-                            topLeft = Offset(x, chartHeight - barHeight),
+                            color = if (
+                                data.chartIsForecast.getOrElse(index) { false }
+                            ) {
+                                Color(0xFF63C58A)
+                            } else {
+                                Color(0xFF1685F8)
+                            },
+                            topLeft = Offset(
+                                x,
+                                chartHeight - barHeight
+                            ),
                             size = Size(barWidth, barHeight),
-                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                            cornerRadius = CornerRadius(
+                                4.dp.toPx(),
+                                4.dp.toPx()
+                            )
                         )
                     }
                 }
             }
         }
+
+        // Horários: cada um ocupa uma coluna igual e fica centralizado.
+        // O início e o fim acompanham exatamente a área das barras.
         Row(
-            Modifier.fillMaxWidth().padding(start = 36.dp, end = 2.dp, top = 5.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 45.dp,
+                    end = 12.dp,
+                    top = 7.dp
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            data.hours.forEach { hour ->
-                Text(hour.take(2) + "h", color = Color(0xFF9CA3B5), fontSize = 7.sp, maxLines = 1)
+
+            data.hours.take(count).forEach { hour ->
+
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = hour.take(2) + "h",
+                        color = Color(0xFF8F98AD),
+                        fontSize = 8.sp,
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
@@ -399,7 +514,7 @@ fun AIRecommendationCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp),
+            .height(70.dp),
 
         shape = RoundedCornerShape(16.dp),
 
@@ -472,7 +587,7 @@ fun AIRecommendationCard(
                     }
                 },
                 color = GrayText,
-                fontSize = 9.sp,
+                fontSize = 10.sp,
                 lineHeight = 13.sp
             )
 
@@ -484,8 +599,8 @@ fun AIRecommendationCard(
                         "${data.minutesUntilRecommendation} minutos."
                 },
                 color = GrayText,
-                fontSize = 9.sp,
-                lineHeight = 13.sp
+                fontSize = 12.sp,
+                lineHeight = 16.sp
             )
 
             }
