@@ -43,8 +43,18 @@ def run_forecast(readings: pd.DataFrame, now: datetime, horizon_hours: int = 48,
 )
 
     forecasts: List[dict] = []
-    for env_id in training.env_ids:
+    # Retorna previsões para todo ambiente com ao menos uma leitura observada,
+    # inclusive os que ainda não têm 8 dias para participar do treinamento.
+    environment_ids = sorted(observed["environmentId"].dropna().unique().tolist())
+    for env_id in environment_ids:
         points = predictions.get(env_id, [])
+        # Os indicadores de pico e melhor horário representam somente o
+        # restante do dia atual. O horizonte de 48h continua disponível em
+        # "points" para o gráfico e demais análises.
+        today_points = [
+            point for point in points
+            if point["ts"].date() == now.date() and point["ts"] > now
+        ]
         capacity = int(latest.loc[env_id, "capacity"]) if env_id in latest.index else 0
         forecasts.append({
             "environmentId": env_id,
@@ -56,8 +66,8 @@ def run_forecast(readings: pd.DataFrame, now: datetime, horizon_hours: int = 48,
                 "predictedOccupancyPercent": p["occupancy"],
                 "predictedPeople": int(round(p["occupancy"] / 100 * capacity)),
             } for p in points],
-            "peak": _peak_info(max(points, key=lambda p: p["occupancy"]), now) if points else None,
-            "bestTime": _peak_info(min(points, key=lambda p: p["occupancy"]), now) if points else None,
+            "peak": _peak_info(max(today_points, key=lambda p: p["occupancy"]), now) if today_points else None,
+            "bestTime": _peak_info(min(today_points, key=lambda p: p["occupancy"]), now) if today_points else None,
         })
 
     insights = build_insights(forecasts, training, now)          # sempre sobre todos os ambientes

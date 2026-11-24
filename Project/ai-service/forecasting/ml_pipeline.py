@@ -325,7 +325,13 @@ def forecast_hours(
 
     rows = []
 
-    for env_id in result.env_ids:
+    # Inclui também ambientes com histórico menor que 8 dias. O treino global
+    # continua usando somente os ambientes com lags suficientes, mas a previsão
+    # desses ambientes novos usa a mediana do próprio histórico como baseline.
+    all_environment_ids = sorted(observed["environmentId"].dropna().unique().tolist())
+    trained_environment_ids = set(result.env_ids)
+
+    for env_id in all_environment_ids:
 
         environment_history = observed[
             observed["environmentId"] == env_id
@@ -400,11 +406,13 @@ def forecast_hours(
 
     delta = result.model.predict(features)
 
-    frame["predicted"] = np.clip(
-        frame["lag_7d"].to_numpy(dtype=float) + delta,
-        0,
-        100,
-    )
+    # Para ambientes que não participaram do treino por falta de histórico,
+    # não aplica correção aprendida de outros ambientes: mantém o baseline
+    # histórico calculado acima. Assim eles não desaparecem da resposta da API.
+    is_trained = frame["environmentId"].isin(trained_environment_ids).to_numpy()
+    predicted = frame["lag_7d"].to_numpy(dtype=float) + np.where(is_trained, delta, 0.0)
+
+    frame["predicted"] = np.clip(predicted, 0, 100)
 
     output: Dict[str, List[dict]] = {}
 

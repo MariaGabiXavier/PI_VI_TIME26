@@ -318,19 +318,12 @@ fun SearchBar(
                     Text(
                         text = "Pesquisar refeitório, biblioteca, laboratório",
                         color = Color(0xFFA4AABD),
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 }
 
                 innerTextField()
             }
-        )
-
-        Icon(
-            imageVector = Icons.Default.Tune,
-            contentDescription = "Filtros",
-            tint = Blue,
-            modifier = Modifier.size(18.dp)
         )
     }
 }
