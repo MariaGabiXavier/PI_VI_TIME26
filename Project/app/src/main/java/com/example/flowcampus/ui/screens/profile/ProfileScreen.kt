@@ -161,46 +161,6 @@ fun ProfileScreen(
             modifier = Modifier.height(20.dp)
         )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Min)
-                .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            ProfileStatCard(
-                value = activity.visitsThisMonth.toString(),
-                label = "Visitas Este Mês",
-                valueColor = DarkText,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-
-            ProfileStatCard(
-                value = formatTimeSaved(activity.timeSavedMinutes),
-                label = "Tempo Economizado",
-                valueColor = Blue,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-
-            ProfileStatCard(
-                value = activity.predictionsUsed.toString(),
-                label = "Previsões Usadas",
-                valueColor = AppGreen,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-        }
-
-        Spacer(
-            modifier = Modifier.height(22.dp)
-        )
-
         Text(
             text = "Locais Favoritos",
             color = DarkText,

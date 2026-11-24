@@ -196,8 +196,8 @@ fun buildSummaryStats(
         0.0
     }
 
-    val busiestArea = buildAreaComparisons(stats)
-        .firstOrNull()
+    val busiestArea = buildOccupancyComparisons(stats)
+        .maxByOrNull { it.value }
         ?.name
         ?: "-"
 
@@ -208,7 +208,7 @@ fun buildSummaryStats(
     return listOf(
 
         SummaryStat(
-            label = "Cntagem Acumulada",
+            label = "Visitantes Totais",
             value = visitorsFormat.format(totalVisitors),
             valueColor = AppNavy
         ),
