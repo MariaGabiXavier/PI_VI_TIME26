@@ -580,7 +580,13 @@ fun AIRecommendationCard(
                 
             Text(
                 text = buildAnnotatedString {
-                    append("A lotação cairá para ")
+                    append(
+                        when {
+                            data.recommendationTime != "Agora" -> "A lotação cairá para "
+                            data.recommendationIsObserved -> "A ocupação atual está "
+                            else -> "A previsão indica "
+                        }
+                    )
 
                     withStyle(
                         SpanStyle(
@@ -593,15 +599,20 @@ fun AIRecommendationCard(
                         )
                     }
 
-                    append(" às ")
-
-                    withStyle(
-                        SpanStyle(
-                            color = DarkText,
-                            fontWeight = FontWeight.Bold
-                        )
-                    ) {
-                        append(data.recommendationTime)
+                    if (data.recommendationTime != "Agora") {
+                        append(" às ")
+                        withStyle(
+                            SpanStyle(
+                                color = DarkText,
+                                fontWeight = FontWeight.Bold
+                            )
+                        ) {
+                            append(data.recommendationTime)
+                        }
+                    } else if (data.recommendationIsObserved) {
+                        append(" neste momento")
+                    } else {
+                        append(" como melhor opção agora")
                     }
                 },
                 color = GrayText,
@@ -610,10 +621,14 @@ fun AIRecommendationCard(
             )
 
             Text(
-                text = if (data.recommendationTime == "--") {
-                    "Não há previsão disponível para este ambiente."
-                } else {
-                    "Horário sugerido em aproximadamente " +
+                text = when (data.recommendationTime) {
+                    "--" -> "Não há previsão disponível para este ambiente."
+                    "Agora" -> if (data.recommendationIsObserved) {
+                        "Este é o melhor momento disponível. Não é necessário esperar."
+                    } else {
+                        "Pelas previsões, não há vantagem em esperar."
+                    }
+                    else -> "Horário sugerido em aproximadamente " +
                         "${data.minutesUntilRecommendation} minutos."
                 },
                 color = GrayText,

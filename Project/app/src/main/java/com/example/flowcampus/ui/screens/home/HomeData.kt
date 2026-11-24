@@ -152,7 +152,8 @@ data class PlaceDetailMock(
     val chartHasData: List<Boolean> = emptyList(),
     val chartIsForecast: List<Boolean> = emptyList(),
     val minutesUntilRecommendation: Int = 0,
-    val recommendationStatus: String = "Sem previsão"
+    val recommendationStatus: String = "Sem previsão",
+    val recommendationIsObserved: Boolean = false
 )
 
 private fun parseForecastTime(value: String): OffsetDateTime? {
@@ -167,14 +168,15 @@ fun getPlaceDetail(
     place: CampusPlace,
     forecast: AiEnvironmentForecast?,
     realReadings: List<CameraReading> = emptyList(),
-    now: OffsetDateTime = OffsetDateTime.now()
+    now: OffsetDateTime = OffsetDateTime.now(ZoneId.of("America/Sao_Paulo"))
 ): PlaceDetailMock {
     val capacity = place.capacity.coerceAtLeast(1)
     // O Firestore e o serviço de IA usam o horário de Brasília.
     // Não depender do fuso configurado no emulador/celular.
     val zone = ZoneId.of("America/Sao_Paulo")
     val today = now.atZoneSameInstant(zone).toLocalDate()
-    val currentHour = now.atZoneSameInstant(zone).hour
+    val nowLocal = now.atZoneSameInstant(zone)
+    val currentHour = nowLocal.hour
     val chartHours = (7..22).toList()
 
     // A API gera a primeira previsão na próxima hora cheia.
@@ -233,18 +235,74 @@ fun getPlaceDetail(
         }
     }
 
-    val futurePoints = forecastByHour.values.mapNotNull { it }
-    val peakPoint = futurePoints.maxByOrNull { it.first.predictedOccupancyPercent }
-    val bestPoint = futurePoints.minByOrNull { it.first.predictedOccupancyPercent }
+    // O pico é sempre o maior valor previsto pela IA para hoje. Em caso de
+    // empate, maxByOrNull mantém o primeiro horário (o mais cedo).
+    val todayForecastPoints = forecastByHour.values.mapNotNull { it }
+    val peakPoint = todayForecastPoints.maxByOrNull {
+        it.first.predictedPeople
+    }
     val peakTime = peakPoint?.second?.let { "%02d:00".format(it.hour) } ?: "--"
-    val recommendationTime = bestPoint?.second?.let { "%02d:00".format(it.hour) } ?: "--"
-    val recommendationPeople = bestPoint?.first?.predictedPeople ?: 0
-    val recommendationStatus = bestPoint?.first?.predictedOccupancyPercent?.let {
+
+    // Para recomendar, comparamos a ocupação observada na hora atual com
+    // todas as previsões futuras de hoje. Se agora já for tão bom quanto
+    // qualquer horário futuro, recomendamos ir agora (sem espera).
+    val currentReading = actualByHour[currentHour]
+    val currentPeople = currentReading?.people?.coerceIn(0, capacity)
+    val bestFuturePoint = todayForecastPoints
+        .filter { it.second.toInstant().isAfter(nowLocal.toInstant()) }
+        .minByOrNull { it.first.predictedPeople }
+
+    // Se não existe leitura na hora atual (ambiente sem câmera/sem registro),
+    // não inventamos uma ocupação atual. Quando a melhor faixa prevista fica
+    // antes ou no pico e ainda estamos antes do pico, não há motivo previsto
+    // para esperar: a recomendação é ir agora. Se a melhor faixa fica depois
+    // do pico, recomendamos esse horário futuro.
+    val bestIsBeforeOrAtPeak = bestFuturePoint != null && peakPoint != null &&
+        !bestFuturePoint.second.isAfter(peakPoint.second)
+    val currentIsBeforePeak = peakPoint != null &&
+        nowLocal.toLocalTime().isBefore(peakPoint.second.toLocalTime())
+    val forecastSuggestsGoNow = currentPeople == null &&
+        currentIsBeforePeak && bestIsBeforeOrAtPeak
+
+    val recommendNow = (currentPeople != null &&
+        (bestFuturePoint == null || currentPeople <= bestFuturePoint.first.predictedPeople)) ||
+        forecastSuggestsGoNow
+
+    val recommendationPeople: Int
+    val recommendationPercent: Int?
+    val recommendationTime: String
+    val waitingTime: Int
+
+    var recommendationIsObserved = false
+    if (recommendNow) {
+        if (currentPeople != null) {
+            recommendationPeople = currentPeople
+            recommendationPercent = ((currentPeople.toDouble() / capacity) * 100.0).roundToInt()
+            recommendationIsObserved = true
+        } else {
+            recommendationPeople = bestFuturePoint?.first?.predictedPeople ?: 0
+            recommendationPercent = bestFuturePoint?.first?.predictedOccupancyPercent
+        }
+        recommendationTime = "Agora"
+        waitingTime = 0
+    } else if (bestFuturePoint != null) {
+        recommendationPeople = bestFuturePoint.first.predictedPeople
+        recommendationPercent = bestFuturePoint.first.predictedOccupancyPercent
+        recommendationTime = "%02d:00".format(bestFuturePoint.second.hour)
+        waitingTime = Duration.between(
+            nowLocal.toInstant(),
+            bestFuturePoint.second.toInstant()
+        ).toMinutes().coerceAtLeast(0).toInt()
+    } else {
+        recommendationPeople = 0
+        recommendationPercent = null
+        recommendationTime = "--"
+        waitingTime = 0
+    }
+
+    val recommendationStatus = recommendationPercent?.let {
         when { it >= 70 -> "Alto"; it >= 40 -> "Médio"; else -> "Baixo" }
     } ?: "Sem previsão"
-    val waitingTime = bestPoint?.second?.let {
-        Duration.between(now, it.toOffsetDateTime()).toMinutes().coerceAtLeast(0).toInt()
-    } ?: 0
 
     return PlaceDetailMock(
         people = place.people,
@@ -258,7 +316,8 @@ fun getPlaceDetail(
         chartHasData = hasData,
         chartIsForecast = isForecast,
         minutesUntilRecommendation = waitingTime,
-        recommendationStatus = recommendationStatus
+        recommendationStatus = recommendationStatus,
+        recommendationIsObserved = recommendationIsObserved
     )
 }
 
