@@ -92,7 +92,28 @@ O projeto utiliza conceitos e tecnologias relacionados a:
 *  Inteligência Artificial e Machine Learning;
 *  Câmeras e dispositivos conectados.
 
-> As tecnologias específicas de implementação ainda estão sendo definidas no desenvolvimento do projeto.
+> ## Inteligência Artificial
+> 1. Entre na pasta do serviço:
+> cd Project\ai-service
+> 2. Crie e ative o ambiente virtual:
+> python -m venv .venv
+> .\.venv\Scripts\Activate.ps1
+> 3. Instale as dependências:
+> python -m pip install -r requirements.txt
+> 4. Inicie a API:
+> python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+> ## Visão Computacional
+> 1. Entre na pasta do módulo:
+> cd VisaoComputacional
+> 2. Crie e ative o ambiente virtual:
+> python -m venv .venv
+> .\.venv\Scripts\Activate.ps1 
+> 3. Instale as dependências:
+> python -m pip install --upgrade pip
+> pip install -r requirements.txt
+> 4. Execute a detecção de pessoas:
+> python detectar_pessoas_firebase.py
 
 ---
 
